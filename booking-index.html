@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Book a Meeting — Adviser CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & tokens ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:    #07385D;
+  --blue:    #00ABE6;
+  --blue-dk: #0089b8;
+  --blue-lt: #e8f7fd;
+  --ink:     #1a2b3c;
+  --mid:     #5a7080;
+  --muted:   #98aab8;
+  --divider: #e8edf2;
+  --bg:      #f4f7fa;
+  --card:    #ffffff;
+  --green:   #059669;
+  --green-lt:#d1fae5;
+  --red:     #dc2626;
+  --red-lt:  #fee2e2;
+  --amber:   #d97706;
+  --radius:  14px;
+  --shadow:  0 2px 16px rgba(7,56,93,0.08);
+  --sans:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+/* ── Layout ── */
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+}
+
+/* ── Left panel ── */
+.left {
+  background: var(--navy);
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+.left-logo { margin-bottom: 48px; }
+.left-logo img { height: 36px; filter: brightness(0) invert(1); opacity: 0.9; }
+.left-logo-fallback {
+  font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.5px;
+}
+.left-heading {
+  font-size: 26px; font-weight: 700; color: #fff;
+  line-height: 1.25; margin-bottom: 10px; letter-spacing: -0.5px;
+}
+.left-sub { font-size: 14px; color: rgba(255,255,255,0.55); line-height: 1.6; margin-bottom: 48px; }
+
+/* Progress steps */
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step-item {
+  display: flex; align-items: flex-start; gap: 16px;
+  padding: 14px 0; position: relative;
+}
+.step-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 14px; top: 42px;
+  width: 2px; height: calc(100% - 10px);
+  background: rgba(255,255,255,0.12);
+}
+.step-item.done::after { background: rgba(0,171,230,0.4); }
+.step-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4);
+  border: 2px solid rgba(255,255,255,0.15);
+  transition: all 0.3s;
+}
+.step-item.active .step-dot {
+  background: var(--blue); color: #fff;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 4px rgba(0,171,230,0.2);
+}
+.step-item.done .step-dot {
+  background: rgba(0,171,230,0.2); color: var(--blue);
+  border-color: var(--blue); font-size: 14px;
+}
+.step-label { padding-top: 4px; }
+.step-name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.4); transition: color 0.3s; }
+.step-item.active .step-name { color: #fff; }
+.step-item.done  .step-name { color: rgba(0,171,230,0.8); }
+.step-desc { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 2px; }
+.step-item.active .step-desc { color: rgba(255,255,255,0.5); }
+
+.left-footer {
+  margin-top: auto; padding-top: 32px;
+  font-size: 11px; color: rgba(255,255,255,0.25);
+  line-height: 1.6;
+}
+.left-footer a { color: rgba(0,171,230,0.6); text-decoration: none; }
+
+/* ── Right panel ── */
+.right {
+  padding: 48px 56px;
+  overflow-y: auto;
+  min-height: 100vh;
+}
+.step-panel { display: none; animation: stepIn 0.25s ease; }
+.step-panel.active { display: block; }
+@keyframes stepIn {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.panel-heading {
+  font-size: 22px; font-weight: 700; color: var(--ink);
+  letter-spacing: -0.4px; margin-bottom: 6px;
+}
+.panel-sub { font-size: 14px; color: var(--mid); margin-bottom: 32px; }
+
+/* ── Meeting type cards ── */
+.meeting-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-bottom: 32px;
+}
+.meeting-card {
+  background: var(--card); border-radius: var(--radius);
+  border: 2px solid var(--divider);
+  padding: 20px;
+  cursor: pointer; transition: all 0.18s;
+  position: relative; overflow: hidden;
+}
+.meeting-card:hover { border-color: var(--blue); transform: translateY(-1px); box-shadow: var(--shadow); }
+.meeting-card.selected { border-color: var(--blue); background: var(--blue-lt); }
+.meeting-card.selected::after {
+  content: '✓';
+  position: absolute; top: 12px; right: 14px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.meeting-icon { font-size: 28px; margin-bottom: 12px; }
+.meeting-name { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.meeting-duration { font-size: 12px; color: var(--muted); }
+.meeting-adviser { font-size: 11px; color: var(--blue-dk); margin-top: 8px; font-weight: 500; }
+.meeting-sub-desc { font-size: 12px; color: var(--mid); margin: 6px 0 8px; line-height: 1.5; }
+
+/* ── Calendar ── */
+.cal-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* Left: Calendar */
+.cal-card {
+  border-right: 1px solid var(--divider);
+  padding-bottom: 16px;
+}
+.cal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 22px 16px;
+}
+.cal-month-wrap { text-align: center; }
+.cal-month { font-size: 16px; font-weight: 700; color: var(--ink); }
+.cal-year  { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.cal-nav-btn {
+  width: 36px; height: 36px; border-radius: 10px;
+  border: 1.5px solid var(--divider);
+  background: var(--bg); color: var(--mid);
+  font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.cal-nav-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-lt); }
+.cal-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.cal-grid {
+  padding: 0 16px 8px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-day-label {
+  text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--muted); padding: 6px 0 10px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cal-day {
+  aspect-ratio: 1; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 500; cursor: default;
+  color: var(--muted); transition: all 0.15s;
+  position: relative;
+}
+.cal-day.available {
+  color: var(--ink); cursor: pointer; font-weight: 600;
+}
+.cal-day.available:hover {
+  background: var(--blue-lt); color: var(--blue);
+}
+.cal-day.today::after {
+  content: '';
+  position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--blue);
+}
+.cal-day.today.selected::after { background: #fff; }
+.cal-day.selected {
+  background: var(--blue) !important; color: #fff !important;
+  font-weight: 700; box-shadow: 0 4px 12px rgba(0,171,230,0.35);
+}
+.cal-day.past { color: #d8e0ea; cursor: not-allowed; }
+.cal-day.empty { cursor: default; }
+
+/* Legend */
+.cal-legend {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 22px 4px;
+  border-top: 1px solid var(--divider);
+  font-size: 11px; color: var(--muted);
+}
+.cal-legend-dot {
+  width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+}
+.cal-legend-item { display: flex; align-items: center; gap: 5px; }
+
+/* Right: Time slots */
+.slots-panel {
+  padding: 20px 22px;
+  display: flex; flex-direction: column;
+}
+.slots-header { margin-bottom: 16px; }
+.slots-selected-date {
+  font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px;
+}
+.slots-adviser-label {
+  font-size: 12px; color: var(--muted);
+}
+.slots-tz {
+  font-size: 11px; color: var(--muted);
+  margin-top: 10px; padding: 7px 10px;
+  background: var(--bg); border-radius: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.slots-divider { margin: 14px 0; border: none; border-top: 1px solid var(--divider); }
+.slots-section-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px;
+}
+.slots-list {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; overflow-y: auto; max-height: 340px;
+  scrollbar-width: thin; scrollbar-color: var(--divider) transparent;
+}
+.slot-btn {
+  padding: 11px 12px;
+  background: var(--bg); border: 1.5px solid var(--divider);
+  border-radius: 10px; text-align: center;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  color: var(--ink); cursor: pointer; transition: all 0.18s;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px;
+}
+.slot-btn:hover {
+  border-color: var(--blue); color: var(--blue);
+  background: var(--blue-lt); transform: translateY(-1px);
+}
+.slot-btn.selected {
+  background: var(--blue); border-color: var(--blue);
+  color: #fff; box-shadow: 0 4px 12px rgba(0,171,230,0.3);
+}
+.slot-btn.booked {
+  color: var(--muted); cursor: not-allowed;
+  background: var(--bg); border-color: transparent;
+  text-decoration: line-through; opacity: 0.5;
+}
+.slot-duration { font-size: 10px; opacity: 0.6; font-weight: 400; }
+.slot-btn.selected .slot-duration { opacity: 0.8; }
+.slots-empty {
+  grid-column: 1/-1;
+  text-align: center; padding: 40px 16px;
+  color: var(--muted); font-size: 13px; line-height: 1.6;
+}
+.slots-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+.slots-placeholder {
+  text-align: center; padding: 40px 16px;
+  color: var(--muted); font-size: 13px;
+}
+.slots-placeholder-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.25; }
+
+/* Selected slot confirmation bar */
+.slot-confirm-bar {
+  display: none; margin-top: 16px;
+  background: var(--green-lt); border: 1.5px solid #6ee7b7;
+  border-radius: 12px; padding: 12px 14px;
+  font-size: 13px; color: var(--green); font-weight: 600;
+  align-items: center; gap: 10px;
+}
+.slot-confirm-bar.visible { display: flex; }
+
+@media (max-width: 760px) {
+  .cal-layout { grid-template-columns: 1fr; }
+  .cal-card { border-right: none; border-bottom: 1px solid var(--divider); }
+  .slots-list { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── Booking form ── */
+.booking-summary {
+  background: var(--blue-lt); border-radius: var(--radius);
+  padding: 18px 20px; margin-bottom: 28px;
+  display: flex; gap: 20px; flex-wrap: wrap;
+}
+.summary-item { flex: 1; min-width: 140px; }
+.summary-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--blue-dk); margin-bottom: 4px; }
+.summary-value { font-size: 14px; font-weight: 600; color: var(--navy); }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.span-2 { grid-column: span 2; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--mid); }
+.form-input {
+  padding: 11px 14px;
+  background: var(--card); border: 1.5px solid var(--divider);
+  border-radius: 10px; font-family: var(--sans); font-size: 14px;
+  color: var(--ink); outline: none; transition: border-color 0.15s;
+}
+.form-input:focus { border-color: var(--blue); }
+.form-input.error { border-color: var(--red); }
+.form-input::placeholder { color: var(--muted); }
+textarea.form-input { resize: vertical; min-height: 90px; }
+.form-error { font-size: 11px; color: var(--red); margin-top: 2px; display: none; }
+.form-group.has-error .form-error { display: block; }
+.form-group.has-error .form-input { border-color: var(--red); }
+
+/* ── Confirmation ── */
+.confirm-wrap { text-align: center; padding: 32px 0; }
+.confirm-icon {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--green-lt); margin: 0 auto 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+}
+.confirm-heading { font-size: 24px; font-weight: 700; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.4px; }
+.confirm-sub { font-size: 14px; color: var(--mid); margin-bottom: 32px; }
+.confirm-detail {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 24px; text-align: left;
+  max-width: 480px; margin: 0 auto 28px;
+}
+.confirm-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid var(--divider);
+  font-size: 13px;
+}
+.confirm-row:last-child { border-bottom: none; }
+.confirm-row-label { color: var(--mid); }
+.confirm-row-value { font-weight: 600; color: var(--ink); }
+.confirm-ref {
+  font-size: 11px; color: var(--muted); margin-top: 8px;
+  font-family: monospace; letter-spacing: 0.05em;
+}
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 12px; align-items: center; margin-top: 32px; }
+.btn-primary {
+  padding: 13px 28px; background: var(--blue); color: #fff;
+  border: none; border-radius: 11px;
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.18s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover { background: var(--blue-dk); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,171,230,0.3); }
+.btn-primary:disabled { background: var(--muted); transform: none; box-shadow: none; cursor: not-allowed; }
+.btn-ghost {
+  padding: 13px 20px; background: transparent; color: var(--mid);
+  border: 1.5px solid var(--divider); border-radius: 11px;
+  font-family: var(--sans); font-size: 14px; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+.btn-new-booking {
+  padding: 13px 28px; background: var(--navy); color: #fff;
+  border: none; border-radius: 11px;
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.18s; margin: 0 auto;
+  display: inline-flex;
+}
+.btn-new-booking:hover { background: #0a4f82; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; top: 20px; right: 20px;
+  background: var(--navy); color: #fff;
+  padding: 12px 20px; border-radius: 12px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: 0 8px 24px rgba(7,56,93,0.2);
+  transform: translateY(-80px); opacity: 0;
+  transition: all 0.3s; z-index: 1000;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.error { border-left: 4px solid var(--red); }
+.toast.success { border-left: 4px solid var(--green); }
+
+/* ── Adviser badge ── */
+.adviser-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.08); border-radius: 10px;
+  padding: 10px 14px; margin-top: 32px;
+}
+.adviser-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.adviser-name { font-size: 13px; font-weight: 600; color: #fff; }
+.adviser-role { font-size: 11px; color: rgba(255,255,255,0.45); }
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; }
+  .left { position: static; height: auto; padding: 32px 24px 24px; }
+  .steps { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .step-item::after { display: none; }
+  .right { padding: 32px 20px; }
+  .cal-layout { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.span-2 { grid-column: span 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .step-panel { animation: none; }
+  .btn-primary:hover, .meeting-card:hover { transform: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Left Panel ── -->
+  <div class="left">
+    <div class="left-logo">
+      <img src="https://adviser-crm.github.io/adviser-crm-widgets/assets/branding/adviser-crm-logo.webp"
+           alt="Adviser CRM"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <div class="left-logo-fallback" style="display:none;">Adviser CRM</div>
+    </div>
+
+    <div class="left-heading">Book a meeting<br>with our team</div>
+    <div class="left-sub">Choose a meeting type, pick a time that works for you, and we'll take care of the rest.</div>
+
+    <div class="steps" id="step-indicators">
+      <div class="step-item active" id="ind-1">
+        <div class="step-dot">1</div>
+        <div class="step-label">
+          <div class="step-name">Meeting type</div>
+          <div class="step-desc">Choose what you need</div>
+        </div>
+      </div>
+      <div class="step-item" id="ind-2">
+        <div class="step-dot">2</div>
+        <div class="step-label">
+          <div class="step-name">Date & time</div>
+          <div class="step-desc">Pick a slot that suits you</div>
+        </div>
+      </div>
+      <div class="step-item" id="ind-3">
+        <div class="step-dot">3</div>
+        <div class="step-label">
+          <div class="step-name">Your details</div>
+          <div class="step-desc">So we can confirm your booking</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="adviser-badge" id="adviser-badge" style="display:none;">
+      <div class="adviser-avatar" id="adviser-initials">SD</div>
+      <div>
+        <div class="adviser-name" id="adviser-name">Sean Davis</div>
+        <div class="adviser-role" id="adviser-role">CEO</div>
+      </div>
+    </div>
+
+    <div class="left-footer">
+      <div>© 2026 Adviser CRM</div>
+      <div><a href="#">Privacy Policy</a> · <a href="#">Terms</a></div>
+    </div>
+  </div>
+
+  <!-- ── Right Panel ── -->
+  <div class="right">
+
+    <!-- Step 1: Meeting type -->
+    <div class="step-panel active" id="panel-1">
+      <div class="panel-heading">What can we help you with?</div>
+      <div class="panel-sub">Select the type of meeting that best describes what you need.</div>
+
+      <div class="meeting-grid" id="meeting-grid">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-next-1" onclick="goToStep(2)" disabled>
+          Continue <span>→</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Date & time -->
+    <div class="step-panel" id="panel-2">
+      <div class="panel-heading">Choose a date & time</div>
+      <div class="panel-sub" id="step2-sub">Select a day then a time that works for you.</div>
+
+      <!-- Meeting type reminder pill -->
+      <div id="step2-reminder" style="display:none;margin-bottom:20px;">
+        <span style="display:inline-flex;align-items:center;gap:8px;background:var(--blue-lt);
+          border:1.5px solid var(--blue-mid);border-radius:20px;padding:6px 14px;
+          font-size:13px;font-weight:600;color:var(--blue-dk);">
+          <span id="step2-reminder-icon">🖥</span>
+          <span id="step2-reminder-name">Product Demo</span>
+          <span style="font-weight:400;color:var(--muted);">·</span>
+          <span id="step2-reminder-duration" style="color:var(--muted);font-weight:400;">60 min</span>
+        </span>
+      </div>
+
+      <div class="cal-layout">
+
+        <!-- Left: Calendar -->
+        <div class="cal-card">
+          <div class="cal-header">
+            <button class="cal-nav-btn" id="cal-prev" onclick="changeMonth(-1)">‹</button>
+            <div class="cal-month-wrap">
+              <div class="cal-month" id="cal-month">September</div>
+              <div class="cal-year"  id="cal-year">2026</div>
+            </div>
+            <button class="cal-nav-btn" id="cal-next" onclick="changeMonth(1)">›</button>
+          </div>
+          <div class="cal-grid" id="cal-grid"><!-- Rendered by JS --></div>
+          <div class="cal-legend">
+            <div class="cal-legend-item">
+              <div class="cal-legend-dot" style="background:var(--blue);"></div>
+              <span>Available</span>
+            </div>
+            <div class="cal-legend-item">
+              <div class="cal-legend-dot" style="background:#d8e0ea;"></div>
+              <span>Unavailable</span>
+            </div>
+            <div class="cal-legend-item">
+              <div class="cal-legend-dot" style="background:transparent;border:1.5px solid var(--blue);"></div>
+              <span>Today</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Time slots -->
+        <div class="slots-panel">
+          <div class="slots-header">
+            <div class="slots-selected-date" id="slots-date">Select a date</div>
+            <div class="slots-adviser-label" id="slots-adviser-label"></div>
+            <div class="slots-tz">🌏 New Zealand Time (NZST/NZDT)</div>
+          </div>
+          <hr class="slots-divider">
+          <div class="slots-section-label" id="slots-section-label" style="display:none;">
+            Available times
+          </div>
+          <div class="slots-list" id="slots-list">
+            <div class="slots-placeholder">
+              <div class="slots-placeholder-icon">📅</div>
+              <div>Pick a date on the left to see available times</div>
+            </div>
+          </div>
+          <div class="slot-confirm-bar" id="slot-confirm-bar">
+            <span>✓</span>
+            <span id="slot-confirm-text">Time selected</span>
+          </div>
+        </div>
+
+      </div><!-- /cal-layout -->
+
+      <div class="btn-row" style="margin-top:24px;">
+        <button class="btn-ghost" onclick="goToStep(1)">← Back</button>
+        <button class="btn-primary" id="btn-next-2" onclick="goToStep(3)" disabled>
+          Continue <span>→</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Your details -->
+    <div class="step-panel" id="panel-3">
+      <div class="panel-heading">Your details</div>
+      <div class="panel-sub">We'll send a calendar invite to confirm your booking.</div>
+
+      <div class="booking-summary" id="booking-summary">
+        <div class="summary-item">
+          <div class="summary-label">Meeting</div>
+          <div class="summary-value" id="sum-meeting">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">With</div>
+          <div class="summary-value" id="sum-adviser">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Date</div>
+          <div class="summary-value" id="sum-date">—</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Time</div>
+          <div class="summary-value" id="sum-time">—</div>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group" id="fg-firstname">
+          <label class="form-label" for="f-firstname">First name</label>
+          <input class="form-input" id="f-firstname" type="text" placeholder="John" />
+          <div class="form-error">Please enter your first name</div>
+        </div>
+        <div class="form-group" id="fg-lastname">
+          <label class="form-label" for="f-lastname">Last name</label>
+          <input class="form-input" id="f-lastname" type="text" placeholder="Smith" />
+          <div class="form-error">Please enter your last name</div>
+        </div>
+        <div class="form-group" id="fg-email">
+          <label class="form-label" for="f-email">Email address</label>
+          <input class="form-input" id="f-email" type="email" placeholder="john@example.com" />
+          <div class="form-error">Please enter a valid email</div>
+        </div>
+        <div class="form-group" id="fg-phone">
+          <label class="form-label" for="f-phone">Phone number</label>
+          <input class="form-input" id="f-phone" type="tel" placeholder="+64 21 000 0000" />
+          <div class="form-error">Please enter your phone number</div>
+        </div>
+        <div class="form-group span-2" id="fg-notes">
+          <label class="form-label" for="f-notes">Anything we should know? <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+          <textarea class="form-input" id="f-notes" placeholder="E.g. topics you'd like to cover, any questions you have…"></textarea>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="goToStep(2)">← Back</button>
+        <button class="btn-primary" id="btn-submit" onclick="submitBooking()">
+          Confirm booking
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 4: Confirmation -->
+    <div class="step-panel" id="panel-4">
+      <div class="confirm-wrap">
+        <div class="confirm-icon">✓</div>
+        <div class="confirm-heading">You're all set!</div>
+        <div class="confirm-sub">A calendar invite has been sent to your email address.</div>
+
+        <div class="confirm-detail">
+          <div class="confirm-row">
+            <span class="confirm-row-label">Meeting</span>
+            <span class="confirm-row-value" id="conf-meeting">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-row-label">With</span>
+            <span class="confirm-row-value" id="conf-adviser">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-row-label">Date & time</span>
+            <span class="confirm-row-value" id="conf-datetime">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-row-label">Duration</span>
+            <span class="confirm-row-value" id="conf-duration">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-row-label">Name</span>
+            <span class="confirm-row-value" id="conf-name">—</span>
+          </div>
+          <div class="confirm-row">
+            <span class="confirm-row-label">Email</span>
+            <span class="confirm-row-value" id="conf-email">—</span>
+          </div>
+        </div>
+        <div class="confirm-ref" id="conf-ref"></div>
+
+        <button class="btn-new-booking" onclick="resetBooking()">Book another meeting</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Meeting types → adviser routing ───────────────────────────────
+// Two users from your Zoho CRM:
+// Sean Davis  (CEO)     id: 1484359000000083003  seand@advisercrm.co.nz
+// Kyra Santulio (Manager) id: 1484359000177588001  kyra@advisercrm.co.nz
+
+// Adviser roles — names intentionally not shown to clients
+var ADVISERS = {
+  adviser_a: {
+    id:        '1484359000000083003',
+    email:     'seand@advisercrm.co.nz',
+    role:      'Senior Adviser',
+    workDays:  [1,2,3,4,5],
+    startHour: 9,
+    endHour:   17,
+  },
+  adviser_b: {
+    id:        '1484359000177588001',
+    email:     'kyra@advisercrm.co.nz',
+    role:      'Adviser',
+    workDays:  [1,2,3,4,5],
+    startHour: 9,
+    endHour:   17,
+  },
+};
+
+var MEETING_TYPES = [
+  {
+    id:       'demo',
+    name:     'Product Demo',
+    desc:     '60 min',
+    sub:      'See Adviser CRM in action — a live walkthrough tailored to your business.',
+    icon:     '🖥',
+    duration: 60,
+    adviser:  'adviser_a',
+    zohoType: 'Demo',
+  },
+  {
+    id:       'support',
+    name:     'Technical Support',
+    desc:     '30 min',
+    sub:      "Something not working as expected? Let us diagnose and fix it together.",
+    icon:     '🔧',
+    duration: 30,
+    adviser:  'adviser_b',
+    zohoType: 'Support',
+  },
+  {
+    id:       'onboarding',
+    name:     'New User Onboarding',
+    desc:     '60 min',
+    sub:      "Just getting started? We will walk you through everything you need to hit the ground running.",
+    icon:     '🚀',
+    duration: 60,
+    adviser:  'adviser_a',
+    zohoType: 'Onboarding',
+  },
+  {
+    id:       'training',
+    name:     'Training',
+    desc:     '60 min',
+    sub:      'Deep dive into specific features or workflows with one of our specialists.',
+    icon:     '🎓',
+    duration: 60,
+    adviser:  'adviser_b',
+    zohoType: 'Training',
+  },
+  {
+    id:       'billing',
+    name:     'Account & Billing Review',
+    desc:     '30 min',
+    sub:      'Review your subscription, discuss plan changes, or go over your billing.',
+    icon:     '💳',
+    duration: 30,
+    adviser:  'adviser_a',
+    zohoType: 'Billing Review',
+  },
+  {
+    id:       'change',
+    name:     'I Want to Change Something',
+    desc:     '30 min',
+    sub:      "Need to adjust a setting, workflow, or existing setup? We will sort it out.",
+    icon:     '✏️',
+    duration: 30,
+    adviser:  'adviser_b',
+    zohoType: 'Change Request',
+  },
+  {
+    id:       'new',
+    name:     'I Want to Add Something New',
+    desc:     '30 min',
+    sub:      "Looking to extend or add to your current setup? Let us scope it out together.",
+    icon:     '✨',
+    duration: 30,
+    adviser:  'adviser_b',
+    zohoType: 'New Feature',
+  },
+];
+
+// ── State ─────────────────────────────────────────────────────────
+var state = {
+  step:         1,
+  meetingType:  null,
+  adviser:      null,
+  selectedDate: null,
+  selectedSlot: null,
+  calYear:      new Date().getFullYear(),
+  calMonth:     new Date().getMonth(),
+  bookedSlots:  {}, // key: "YYYY-MM-DD-HH:MM" → true (mock booked)
+};
+
+// ── Init ──────────────────────────────────────────────────────────
+function init() {
+  renderMeetingTypes();
+  renderCalendar();
+}
+
+// Expose critical functions globally so onclick attributes can reach them
+// regardless of how/when the script loads
+window.selectMeeting   = selectMeeting;
+window.selectDate      = selectDate;
+window.selectSlot      = selectSlot;
+window.changeMonth     = changeMonth;
+window.goToStep        = goToStep;
+window.submitBooking   = submitBooking;
+window.resetBooking    = resetBooking;
+window.closeModalDirect = function() {};
+
+// ── Step navigation ───────────────────────────────────────────────
+// ── Step 1: Select meeting type ───────────────────────────────────
+function selectMeeting(id) {
+  var mt = MEETING_TYPES.find(function(m) { return m.id === id; });
+  if (!mt) return;
+  state.meetingType = mt;
+  state.adviser     = ADVISERS[mt.adviser];
+  state.selectedDate = null;
+  state.selectedSlot = null;
+  state.selectedSlotLabel = null;
+
+  // Highlight selected card
+  document.querySelectorAll('.meeting-card').forEach(function(c) {
+    c.classList.remove('selected');
+  });
+  var card = document.querySelector('[data-id="' + id + '"]');
+  if (card) card.classList.add('selected');
+
+  // Enable Continue
+  document.getElementById('btn-next-1').disabled = false;
+}
+
+// ── Step 3: Summary ────────────────────────────────────────────────
+function updateStep3Summary() {
+  var mt  = state.meetingType;
+  var adv = state.adviser;
+  var d   = state.selectedDate;
+  var sumMeeting = document.getElementById('sum-meeting');
+  var sumAdviser = document.getElementById('sum-adviser');
+  var sumDate    = document.getElementById('sum-date');
+  var sumTime    = document.getElementById('sum-time');
+  if (sumMeeting) sumMeeting.textContent = mt  ? mt.name  : '—';
+  if (sumAdviser) sumAdviser.textContent = 'Adviser CRM Team';
+  if (sumDate)    sumDate.textContent    = d   ? d.toLocaleDateString('en-NZ', { day:'numeric', month:'short', year:'numeric' }) : '—';
+  if (sumTime)    sumTime.textContent    = state.selectedSlotLabel || '—';
+}
+
+function goToStep(n) {
+  if (n === 3) updateStep3Summary();
+
+  // Update panels
+  document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById('panel-' + n).classList.add('active');
+
+  // Update indicators
+  for (var i = 1; i <= 3; i++) {
+    var ind = document.getElementById('ind-' + i);
+    var dot = ind.querySelector('.step-dot');
+    ind.classList.remove('active','done');
+    if (i < n)      { ind.classList.add('done');  dot.textContent = '✓'; }
+    else if (i===n) { ind.classList.add('active'); dot.textContent = i; }
+    else            { dot.textContent = i; }
+  }
+
+  state.step = n;
+
+  // Show meeting type reminder on step 2
+  var reminder = document.getElementById('step2-reminder');
+  if (reminder && state.meetingType) {
+    reminder.style.display = n === 2 ? 'block' : 'none';
+    var rIcon = document.getElementById('step2-reminder-icon');
+    var rName = document.getElementById('step2-reminder-name');
+    var rDur  = document.getElementById('step2-reminder-duration');
+    if (rIcon) rIcon.textContent = state.meetingType.icon;
+    if (rName) rName.textContent = state.meetingType.name;
+    if (rDur)  rDur.textContent  = state.meetingType.duration + ' min';
+  }
+
+  // Show adviser badge after step 1
+  var badge = document.getElementById('adviser-badge');
+  if (state.adviser && n > 1) {
+    badge.style.display = 'flex';
+    document.getElementById('adviser-initials').textContent = '👤';
+    document.getElementById('adviser-name').textContent = 'Our team';
+    document.getElementById('adviser-role').textContent  = state.adviser.role;
+  } else {
+    badge.style.display = 'none';
+  }
+
+  // Scroll right panel to top
+  document.querySelector('.right').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Step 1: Meeting types ─────────────────────────────────────────
+function renderMeetingTypes() {
+  var grid = document.getElementById('meeting-grid');
+  grid.innerHTML = MEETING_TYPES.map(function(m) {
+    return '<div class="meeting-card" data-id="' + m.id + '" onclick="selectMeeting(this.dataset.id)">' +
+      '<div class="meeting-icon">' + m.icon + '</div>' +
+      '<div class="meeting-name">' + m.name + '</div>' +
+      '<div class="meeting-sub-desc">' + m.sub + '</div>' +
+      '<div class="meeting-duration">&#9201; ' + m.desc + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function validateForm() {
+  var ok = true;
+  var fields = [
+    { id:'fg-firstname', inputId:'f-firstname', test: function(v) { return v.trim().length > 0; } },
+    { id:'fg-lastname',  inputId:'f-lastname',  test: function(v) { return v.trim().length > 0; } },
+    { id:'fg-email',     inputId:'f-email',     test: function(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); } },
+    { id:'fg-phone',     inputId:'f-phone',     test: function(v) { return v.trim().length >= 6; } },
+  ];
+  fields.forEach(function(f) {
+    var fg  = document.getElementById(f.id);
+    var inp = document.getElementById(f.inputId);
+    if (!f.test(inp.value)) {
+      fg.classList.add('has-error');
+      ok = false;
+    } else {
+      fg.classList.remove('has-error');
+    }
+  });
+  return ok;
+}
+
+// ── Submit booking ────────────────────────────────────────────────
+function submitBooking() {
+  if (!validateForm()) {
+    showToast('Please fill in all required fields', 'error');
+    return;
+  }
+
+  var btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = 'Booking…';
+
+  var mt   = state.meetingType;
+  var adv  = state.adviser;
+  var d    = state.selectedDate;
+  var slot = state.selectedSlotLabel;
+  var fname = document.getElementById('f-firstname').value.trim();
+  var lname = document.getElementById('f-lastname').value.trim();
+  var email = document.getElementById('f-email').value.trim();
+  var phone = document.getElementById('f-phone').value.trim();
+  var notes = document.getElementById('f-notes').value.trim();
+
+  // Build the Zoho Events payload
+  // Start time: combine selected date + slot time
+  var parts    = state.selectedSlot.split('-'); // YYYY-MM-DD-HH:MM
+  var timePart = parts[3]; // HH:MM
+  var startISO = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + timePart + ':00';
+  var endDate  = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var [h, mm2] = timePart.split(':').map(Number);
+  endDate.setHours(h, mm2 + mt.duration, 0, 0);
+  var endISO = endDate.getFullYear() + '-' + pad(endDate.getMonth()+1) + '-' + pad(endDate.getDate()) + 'T' + pad(endDate.getHours()) + ':' + pad(endDate.getMinutes()) + ':00';
+
+  var eventPayload = {
+    Event_Title:     mt.name + ' — ' + fname + ' ' + lname + ' (Online Booking)',
+    Start_DateTime:  startISO,
+    End_DateTime:    endISO,
+    Owner:           { id: adv.id },
+    Venue:           'Online',
+    Description:     'Booked via online booking page.\n' +
+                     'Name: ' + fname + ' ' + lname + '\n' +
+                     'Email: ' + email + '\n' +
+                     'Phone: ' + phone + '\n' +
+                     (notes ? 'Notes: ' + notes : ''),
+  };
+
+  // NOTE: This needs Clive's server-side endpoint to call Zoho REST API
+  // The endpoint receives this payload and creates the Event in Zoho CRM
+  // For now we simulate success after a short delay
+
+  var BOOKING_ENDPOINT = ''; // Set to: 'https://your-api.advisercrm.co.nz/book'
+
+  function onSuccess(ref) {
+    // Mark slot as booked
+    state.bookedSlots[state.selectedSlot] = true;
+
+    // Populate confirmation screen
+    document.getElementById('conf-meeting').textContent  = mt.name;
+    document.getElementById('conf-adviser').textContent  = 'Adviser CRM Team';
+    document.getElementById('conf-datetime').textContent = d.toLocaleDateString('en-NZ',{day:'numeric',month:'long',year:'numeric'}) + ' at ' + slot;
+    document.getElementById('conf-duration').textContent = mt.duration + ' minutes';
+    document.getElementById('conf-name').textContent     = fname + ' ' + lname;
+    document.getElementById('conf-email').textContent    = email;
+    document.getElementById('conf-ref').textContent      = 'Reference: ' + ref;
+
+    // Mark all steps done
+    for (var i = 1; i <= 3; i++) {
+      var ind = document.getElementById('ind-' + i);
+      ind.classList.remove('active');
+      ind.classList.add('done');
+      ind.querySelector('.step-dot').textContent = '✓';
+    }
+
+    document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('panel-4').classList.add('active');
+    document.querySelector('.right').scrollTo({ top: 0, behavior: 'smooth' });
+    btn.disabled = false;
+    btn.textContent = 'Confirm booking';
+  }
+
+  if (BOOKING_ENDPOINT) {
+    fetch(BOOKING_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event:     eventPayload,
+        client:    { firstName:fname, lastName:lname, email:email, phone:phone, notes:notes },
+        meetingType: mt.id,
+        adviserId:   adv.id,
+      }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      onSuccess(data.reference || generateRef());
+    })
+    .catch(function() {
+      showToast('Booking failed — please try again or call us directly', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Confirm booking';
+    });
+  } else {
+    // Mock mode — simulate API call
+    setTimeout(function() { onSuccess(generateRef()); }, 1200);
+  }
+}
+
+function resetBooking() {
+  state.step         = 1;
+  state.meetingType  = null;
+  state.adviser      = null;
+  state.selectedDate = null;
+  state.selectedSlot = null;
+  state.selectedSlotLabel = null;
+  document.querySelectorAll('.meeting-card').forEach(function(c) { c.classList.remove('selected'); });
+  document.getElementById('btn-next-1').disabled = true;
+  document.getElementById('btn-next-2').disabled = true;
+  document.getElementById('f-firstname').value = '';
+  document.getElementById('f-lastname').value  = '';
+  document.getElementById('f-email').value     = '';
+  document.getElementById('f-phone').value     = '';
+  document.getElementById('f-notes').value     = '';
+  document.querySelectorAll('.has-error').forEach(function(e) { e.classList.remove('has-error'); });
+  goToStep(1);
+  document.getElementById('adviser-badge').style.display = 'none';
+  state.calYear  = new Date().getFullYear();
+  state.calMonth = new Date().getMonth();
+  renderCalendar();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function fmtTime12(t) {
+  var parts = t.split(':');
+  var h = parseInt(parts[0]);
+  var m = parts[1];
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + m + ' ' + ampm;
+}
+
+function generateRef() {
+  return 'ACR-' + Date.now().toString(36).toUpperCase().slice(-6);
+}
+
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast ' + (type||'');
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 4000);
+}
+
+// ── Calendar ──────────────────────────────────────────────────────
+function changeMonth(dir) {
+  state.calMonth += dir;
+  if (state.calMonth > 11) { state.calMonth = 0;  state.calYear++; }
+  if (state.calMonth < 0)  { state.calMonth = 11; state.calYear--; }
+  state.selectedDate = null;
+  state.selectedSlot = null;
+  state.selectedSlotLabel = null;
+  document.getElementById('btn-next-2').disabled = true;
+  var sdEl = document.getElementById('slots-date');
+  var slEl = document.getElementById('slots-section-label');
+  if (sdEl) sdEl.textContent = 'Select a date';
+  if (slEl) slEl.style.display = 'none';
+  document.getElementById('slots-list').innerHTML =
+    '<div class="slots-placeholder"><div class="slots-placeholder-icon">&#128197;</div>' +
+    '<div>Pick a date on the left to see available times</div></div>';
+  var bar = document.getElementById('slot-confirm-bar');
+  if (bar) bar.classList.remove('visible');
+  renderCalendar();
+}
+
+function renderCalendar() {
+  var months = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+  var days   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  var y = state.calYear, m = state.calMonth;
+  var today    = new Date(); today.setHours(0,0,0,0);
+  var firstDay = new Date(y, m, 1).getDay();
+  var daysInMo = new Date(y, m+1, 0).getDate();
+
+  var calMonthEl = document.getElementById('cal-month');
+  var calYearEl  = document.getElementById('cal-year');
+  if (calMonthEl) calMonthEl.textContent = months[m];
+  if (calYearEl)  calYearEl.textContent  = y;
+  var prevBtn = document.getElementById('cal-prev');
+  var now2    = new Date();
+  if (prevBtn) prevBtn.disabled = (y === now2.getFullYear() && m <= now2.getMonth());
+
+  var html = days.map(function(d) {
+    return '<div class="cal-day-label">' + d + '</div>';
+  }).join('');
+
+  for (var i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
+
+  for (var d = 1; d <= daysInMo; d++) {
+    var date     = new Date(y, m, d);
+    var isToday  = date.getTime() === today.getTime();
+    var isPast   = date < today;
+    var adv      = state.adviser;
+    var isAvail  = adv && adv.workDays.indexOf(date.getDay()) !== -1 && !isPast;
+    var isSel    = state.selectedDate &&
+      state.selectedDate.getDate()  === d &&
+      state.selectedDate.getMonth() === m &&
+      state.selectedDate.getFullYear() === y;
+
+    var cls = 'cal-day';
+    if (isPast)       cls += ' past';
+    else if (isAvail) cls += ' available';
+    if (isToday)      cls += ' today';
+    if (isSel)        cls += ' selected';
+
+    var onclick = isAvail ? 'onclick="selectDate(' + y + ',' + m + ',' + d + ')"' : '';
+    html += '<div class="' + cls + '" ' + onclick + '>' + d + '</div>';
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function selectDate(y, m, d) {
+  state.selectedDate      = new Date(y, m, d);
+  state.selectedSlot      = null;
+  state.selectedSlotLabel = null;
+  document.getElementById('btn-next-2').disabled = true;
+  var bar = document.getElementById('slot-confirm-bar');
+  if (bar) bar.classList.remove('visible');
+  renderCalendar();
+  renderSlots();
+}
+
+function renderSlots() {
+  var date    = state.selectedDate;
+  var adviser = state.adviser;
+  var mt      = state.meetingType;
+  if (!date || !adviser || !mt) return;
+
+  var sdEl = document.getElementById('slots-date');
+  var slEl = document.getElementById('slots-section-label');
+  var saEl = document.getElementById('slots-adviser-label');
+  if (sdEl) sdEl.textContent = date.toLocaleDateString('en-NZ', { weekday:'long', day:'numeric', month:'long' });
+  if (saEl) saEl.textContent = mt.name + ' · ' + mt.duration + ' min per slot';
+  if (slEl) slEl.style.display = '';
+
+  var slots = [], hour = adviser.startHour, dur = mt.duration;
+  while (hour * 60 + dur <= adviser.endHour * 60) {
+    var hh  = Math.floor(hour);
+    var mm  = (hour % 1) === 0.5 ? '30' : '00';
+    var key = date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate()) + '-' + pad(hh) + ':' + mm;
+    slots.push({ time: pad(hh) + ':' + mm, key: key });
+    hour += 0.5;
+  }
+
+  var slotList = document.getElementById('slots-list');
+  if (!slots.length) {
+    slotList.innerHTML = '<div class="slots-empty"><div class="slots-empty-icon">&#128564;</div>No available times on this date.</div>';
+    return;
+  }
+  slotList.innerHTML = slots.map(function(s) {
+    var isBooked   = state.bookedSlots[s.key];
+    var isSelected = state.selectedSlot === s.key;
+    var label      = fmtTime12(s.time);
+    if (isBooked) {
+      return '<div class="slot-btn booked"><span>' + label + '</span><span class="slot-duration">Booked</span></div>';
+    }
+    return '<div class="slot-btn' + (isSelected ? ' selected' : '') + '" ' +
+      'data-slot="' + s.key + '" data-label="' + label.replace(/&/g,'&amp;') + '" ' +
+      'onclick="selectSlot(this.dataset.slot, this.dataset.label)">' +
+      '<span>' + label + '</span>' +
+      '<span class="slot-duration">' + dur + ' min</span>' +
+      '</div>';
+  }).join('');
+}
+
+function selectSlot(key, label) {
+  state.selectedSlot      = key;
+  state.selectedSlotLabel = label;
+  document.querySelectorAll('.slot-btn').forEach(function(b) { b.classList.remove('selected'); });
+  var btn = document.querySelector('[data-slot="' + key + '"]');
+  if (btn) btn.classList.add('selected');
+  document.getElementById('btn-next-2').disabled = false;
+
+  var bar  = document.getElementById('slot-confirm-bar');
+  var text = document.getElementById('slot-confirm-text');
+  if (bar) bar.classList.add('visible');
+  if (text) {
+    var d  = state.selectedDate;
+    var ds = d.toLocaleDateString('en-NZ', { weekday:'short', day:'numeric', month:'short' });
+    text.textContent = ds + ' at ' + label + ' — ready to continue';
+  }
+}
+
+// ── Real-time form validation (clear errors on input) ──────────────
+['f-firstname','f-lastname','f-email','f-phone'].forEach(function(id) {
+  document.getElementById(id).addEventListener('input', function() {
+    var fg = document.getElementById('fg-' + id.replace('f-',''));
+    if (fg) fg.classList.remove('has-error');
+  });
+});
+
+// Start — wait for DOM to be fully ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
