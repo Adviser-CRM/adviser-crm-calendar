@@ -996,7 +996,7 @@ function submitBooking() {
   // The endpoint receives this payload and creates the Event in Zoho CRM
   // For now we simulate success after a short delay
 
-  var BOOKING_ENDPOINT = ''; // Set to: 'https://your-api.advisercrm.co.nz/book'
+  var BOOKING_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/book';
 
   function onSuccess(ref) {
     // Mark slot as booked
