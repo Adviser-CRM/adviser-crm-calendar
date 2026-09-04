@@ -51,7 +51,7 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
   overflow: hidden;
 }
 .left-logo { margin-bottom: 48px; }
-.left-logo img { height: 36px; filter: brightness(0) invert(1); opacity: 0.9; }
+.left-logo img { height: 44px; opacity: 0.95; }
 .left-logo-fallback {
   font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.5px;
 }
@@ -455,7 +455,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
   <!-- ── Left Panel ── -->
   <div class="left">
     <div class="left-logo">
-      <img src="https://adviser-crm.github.io/adviser-crm-widgets/assets/branding/adviser-crm-logo.webp"
+      <img src="https://adviser-crm.github.io/adviser-crm-widgets/calendar/acrm-logo-white-calendar.webp"
            alt="Adviser CRM"
            onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
       <div class="left-logo-fallback" style="display:none;">Adviser CRM</div>
@@ -996,7 +996,7 @@ function submitBooking() {
   // The endpoint receives this payload and creates the Event in Zoho CRM
   // For now we simulate success after a short delay
 
-  var BOOKING_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/book';
+  var BOOKING_ENDPOINT = ''; // Set to: 'https://your-api.advisercrm.co.nz/book'
 
   function onSuccess(ref) {
     // Mark slot as booked
