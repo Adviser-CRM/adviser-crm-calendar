@@ -15,6 +15,9 @@
 
 const ALLOWED_ORIGINS = [
   'https://adviser-crm.github.io',
+  'https://calendar.advisercrm.co.nz',
+  'https://www.advisercrm.co.nz',
+  'https://advisercrm.co.nz',
   'http://localhost',
 ];
 
