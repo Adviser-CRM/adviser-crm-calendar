@@ -375,31 +375,56 @@ textarea.form-input { resize: vertical; min-height: 90px; }
 }
 
 /* ── Buttons ── */
-.btn-row { display: flex; gap: 12px; align-items: center; margin-top: 32px; }
+.btn-row { display: flex; gap: 10px; align-items: center; margin-top: 32px; }
+
 .btn-primary {
-  padding: 13px 28px; background: var(--blue); color: #fff;
-  border: none; border-radius: 11px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dk) 100%);
+  color: #fff; border: none; border-radius: 10px;
   font-family: var(--sans); font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: all 0.18s;
+  cursor: pointer; transition: all 0.2s;
   display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,171,230,0.25);
+  letter-spacing: 0.01em;
 }
-.btn-primary:hover { background: var(--blue-dk); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,171,230,0.3); }
-.btn-primary:disabled { background: var(--muted); transform: none; box-shadow: none; cursor: not-allowed; }
+.btn-primary:hover {
+  background: linear-gradient(135deg, #00c3ff 0%, var(--blue) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,171,230,0.35);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled {
+  background: linear-gradient(135deg, #c8d8e0 0%, #b0c4cf 100%);
+  box-shadow: none; transform: none; cursor: not-allowed;
+}
+
 .btn-ghost {
-  padding: 13px 20px; background: transparent; color: var(--mid);
-  border: 1.5px solid var(--divider); border-radius: 11px;
-  font-family: var(--sans); font-size: 14px; cursor: pointer;
-  transition: all 0.15s;
+  padding: 12px 20px;
+  background: var(--bg); color: var(--mid);
+  border: 1.5px solid var(--divider); border-radius: 10px;
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 6px;
 }
-.btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+.btn-ghost:hover {
+  border-color: var(--blue); color: var(--blue);
+  background: var(--blue-lt);
+}
+
 .btn-new-booking {
-  padding: 13px 28px; background: var(--navy); color: #fff;
-  border: none; border-radius: 11px;
+  padding: 13px 32px;
+  background: linear-gradient(135deg, var(--navy) 0%, #0a4f82 100%);
+  color: #fff; border: none; border-radius: 10px;
   font-family: var(--sans); font-size: 14px; font-weight: 600;
-  cursor: pointer; transition: all 0.18s; margin: 0 auto;
-  display: inline-flex;
+  cursor: pointer; transition: all 0.2s; margin: 0 auto;
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 2px 8px rgba(7,56,93,0.2);
 }
-.btn-new-booking:hover { background: #0a4f82; }
+.btn-new-booking:hover {
+  background: linear-gradient(135deg, #0a4f82 0%, #0d5f9a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(7,56,93,0.3);
+}
 
 /* ── Toast ── */
 .toast {
@@ -526,16 +551,24 @@ textarea.form-input { resize: vertical; min-height: 90px; }
       <div class="panel-heading">Choose a date & time</div>
       <div class="panel-sub" id="step2-sub">Select a day then a time that works for you.</div>
 
-      <!-- Meeting type reminder pill -->
-      <div id="step2-reminder" style="display:none;margin-bottom:20px;">
-        <span style="display:inline-flex;align-items:center;gap:8px;background:var(--blue-lt);
-          border:1.5px solid var(--blue-mid);border-radius:20px;padding:6px 14px;
-          font-size:13px;font-weight:600;color:var(--blue-dk);">
-          <span id="step2-reminder-icon">🖥</span>
-          <span id="step2-reminder-name">Product Demo</span>
-          <span style="font-weight:400;color:var(--muted);">·</span>
-          <span id="step2-reminder-duration" style="color:var(--muted);font-weight:400;">60 min</span>
-        </span>
+      <!-- Top bar: reminder pill + navigation buttons -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div id="step2-reminder" style="display:none;">
+          <span style="display:inline-flex;align-items:center;gap:8px;background:var(--blue-lt);
+            border:1.5px solid #b3e5f7;border-radius:20px;padding:6px 14px;
+            font-size:13px;font-weight:600;color:var(--blue-dk);">
+            <span id="step2-reminder-icon">🖥</span>
+            <span id="step2-reminder-name">Product Demo</span>
+            <span style="font-weight:400;color:var(--muted);">·</span>
+            <span id="step2-reminder-duration" style="color:var(--muted);font-weight:400;">60 min</span>
+          </span>
+        </div>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn-ghost" onclick="goToStep(1)">← Back</button>
+          <button class="btn-primary" id="btn-next-2-top" onclick="goToStep(3)" disabled>
+            Continue <span>→</span>
+          </button>
+        </div>
       </div>
 
       <div class="cal-layout">
@@ -592,12 +625,6 @@ textarea.form-input { resize: vertical; min-height: 90px; }
 
       </div><!-- /cal-layout -->
 
-      <div class="btn-row" style="margin-top:24px;">
-        <button class="btn-ghost" onclick="goToStep(1)">← Back</button>
-        <button class="btn-primary" id="btn-next-2" onclick="goToStep(3)" disabled>
-          Continue <span>→</span>
-        </button>
-      </div>
     </div>
 
     <!-- Step 3: Your details -->
@@ -1226,7 +1253,10 @@ function selectSlot(key, label) {
   document.querySelectorAll('.slot-btn').forEach(function(b) { b.classList.remove('selected'); });
   var btn = document.querySelector('[data-slot="' + key + '"]');
   if (btn) btn.classList.add('selected');
-  document.getElementById('btn-next-2').disabled = false;
+  var btn2 = document.getElementById('btn-next-2');
+  var btn2t = document.getElementById('btn-next-2-top');
+  if (btn2)  btn2.disabled  = false;
+  if (btn2t) btn2t.disabled = false;
 
   var bar  = document.getElementById('slot-confirm-bar');
   var text = document.getElementById('slot-confirm-text');
