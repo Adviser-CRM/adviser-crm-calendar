@@ -532,17 +532,20 @@ textarea.form-input { resize: vertical; min-height: 90px; }
 
     <!-- Step 1: Meeting type -->
     <div class="step-panel active" id="panel-1">
-      <div class="panel-heading">What can we help you with?</div>
-      <div class="panel-sub">Select the type of meeting that best describes what you need.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div class="panel-heading" style="margin-bottom:4px;">What can we help you with?</div>
+          <div class="panel-sub" style="margin-bottom:0;">Select the type of meeting that best describes what you need.</div>
+        </div>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn-primary" id="btn-next-1" onclick="goToStep(2)" disabled>
+            Continue <span>→</span>
+          </button>
+        </div>
+      </div>
 
       <div class="meeting-grid" id="meeting-grid">
         <!-- Rendered by JS -->
-      </div>
-
-      <div class="btn-row">
-        <button class="btn-primary" id="btn-next-1" onclick="goToStep(2)" disabled>
-          Continue <span>→</span>
-        </button>
       </div>
     </div>
 
@@ -878,6 +881,9 @@ function selectMeeting(id) {
 
   // Enable Continue
   document.getElementById('btn-next-1').disabled = false;
+
+  // Re-render calendar with correct adviser availability
+  renderCalendar();
 }
 
 // ── Step 3: Summary ────────────────────────────────────────────────
@@ -1152,7 +1158,8 @@ function renderCalendar() {
                 'July','August','September','October','November','December'];
   var days   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
   var y = state.calYear, m = state.calMonth;
-  var today    = new Date(); today.setHours(0,0,0,0);
+  var now      = new Date();
+  var today    = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   var firstDay = new Date(y, m, 1).getDay();
   var daysInMo = new Date(y, m+1, 0).getDate();
 
@@ -1161,8 +1168,7 @@ function renderCalendar() {
   if (calMonthEl) calMonthEl.textContent = months[m];
   if (calYearEl)  calYearEl.textContent  = y;
   var prevBtn = document.getElementById('cal-prev');
-  var now2    = new Date();
-  if (prevBtn) prevBtn.disabled = (y === now2.getFullYear() && m <= now2.getMonth());
+  if (prevBtn) prevBtn.disabled = (y === now.getFullYear() && m <= now.getMonth());
 
   var html = days.map(function(d) {
     return '<div class="cal-day-label">' + d + '</div>';
@@ -1173,9 +1179,12 @@ function renderCalendar() {
   for (var d = 1; d <= daysInMo; d++) {
     var date     = new Date(y, m, d);
     var isToday  = date.getTime() === today.getTime();
-    var isPast   = date < today;
+    var isPast   = date.getTime() < today.getTime();
     var adv      = state.adviser;
-    var isAvail  = adv && adv.workDays.indexOf(date.getDay()) !== -1 && !isPast;
+    // Show all weekdays as available on step 1 preview
+    // Re-renders with adviser when meeting type selected
+    var workDays = adv ? adv.workDays : [1,2,3,4,5];
+    var isAvail  = workDays.indexOf(date.getDay()) !== -1 && !isPast;
     var isSel    = state.selectedDate &&
       state.selectedDate.getDate()  === d &&
       state.selectedDate.getMonth() === m &&
