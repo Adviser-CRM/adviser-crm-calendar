@@ -103,58 +103,62 @@ async function getZohoToken() {
 
 // ── Get adviser events from Zoho CRM ─────────────────────────────
 async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
-  // Search Events where Owner = adviser and date overlaps with our day
-  const criteria = encodeURIComponent(
-    '(Owner:equals:' + ownerId + ')' +
-    'and(Start_DateTime:between:' + startOfDay + ',' + endOfDay + ')'
-  );
+  // Use COQL for reliable event searching
+  const query = "select Event_Title, Start_DateTime, End_DateTime from Events where Owner.id = '" +
+    ownerId + "' and Start_DateTime >= '" + startOfDay + "' and Start_DateTime <= '" + endOfDay + "'";
 
-  const res = await fetch(
-    'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria +
-    '&fields=Event_Title,Start_DateTime,End_DateTime&per_page=50',
-    {
-      headers: {
-        Authorization: 'Zoho-oauthtoken ' + token,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
+  console.log('[ACRM] COQL Query:', query);
 
-  const data = await res.json();
+  const res = await fetch('https://www.zohoapis.com/crm/v3/coql', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Zoho-oauthtoken ' + token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ select_query: query }),
+  });
+
+  const text = await res.text();
+  console.log('[ACRM] Raw Zoho response:', text.substring(0, 500));
+
+  let data;
+  try { data = JSON.parse(text); }
+  catch(e) { console.log('[ACRM] Parse error:', e.message); return []; }
 
   if (!data.data || !data.data.length) {
-    console.log('[ACRM] No events found for adviser on', startOfDay);
+    console.log('[ACRM] No events found');
     return [];
   }
 
-  console.log('[ACRM] Found', data.data.length, 'events for adviser');
+  console.log('[ACRM] Found', data.data.length, 'events');
 
-  // Convert events to busy time ranges (HH:MM format)
+  // NZ is UTC+12 (NZST) in September before daylight saving
+  const NZ_OFFSET_MS = 12 * 60 * 60 * 1000;
+
   const busySlots = [];
   data.data.forEach(function(event) {
     if (!event.Start_DateTime || !event.End_DateTime) return;
+    console.log('[ACRM] Event:', event.Event_Title, event.Start_DateTime, '-', event.End_DateTime);
 
-    const start = new Date(event.Start_DateTime);
-    const end   = new Date(event.End_DateTime);
+    const startUTC = new Date(event.Start_DateTime);
+    const endUTC   = new Date(event.End_DateTime);
+    const startNZ  = new Date(startUTC.getTime() + NZ_OFFSET_MS);
+    const endNZ    = new Date(endUTC.getTime()   + NZ_OFFSET_MS);
 
-    // Generate all 30-min slots that overlap with this event
-    var slotTime = new Date(start);
-    // Round down to nearest 30 min
-    slotTime.setMinutes(slotTime.getMinutes() < 30 ? 0 : 30, 0, 0);
+    console.log('[ACRM] NZ time:', startNZ.toISOString(), '-', endNZ.toISOString());
 
-    while (slotTime < end) {
-      var hh = String(slotTime.getUTCHours() + 12).padStart(2, '0'); // NZ offset
-      if (parseInt(hh) >= 24) hh = String(parseInt(hh) - 24).padStart(2, '0');
-      var mm = String(slotTime.getMinutes()).padStart(2, '0');
+    // Generate 30-min slots covered by this event
+    var slotTime = new Date(startNZ);
+    var mins = slotTime.getUTCMinutes();
+    slotTime.setUTCMinutes(mins < 30 ? 0 : 30, 0, 0);
+
+    while (slotTime < endNZ) {
+      var hh = String(slotTime.getUTCHours()).padStart(2, '0');
+      var mm = String(slotTime.getUTCMinutes()).padStart(2, '0');
       busySlots.push(hh + ':' + mm);
-      slotTime.setMinutes(slotTime.getMinutes() + 30);
+      slotTime.setUTCMinutes(slotTime.getUTCMinutes() + 30);
     }
   });
 
-  // Deduplicate slots
-  var unique = busySlots.filter(function(slot, idx) {
-    return busySlots.indexOf(slot) === idx;
-  });
-  console.log('[ACRM] Busy slots:', unique);
-  return unique;
+  return busySlots;
 }
