@@ -846,6 +846,10 @@ var state = {
   loadingSlots: false,
 };
 
+// ── API Endpoints ─────────────────────────────────────────────────
+var BOOKING_ENDPOINT      = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/book';
+var AVAILABILITY_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/availability';
+
 // ── Init ──────────────────────────────────────────────────────────
 function init() {
   renderMeetingTypes();
@@ -1031,8 +1035,7 @@ function submitBooking() {
   // The endpoint receives this payload and creates the Event in Zoho CRM
   // For now we simulate success after a short delay
 
-  var BOOKING_ENDPOINT      = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/book';
-  var AVAILABILITY_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/availability';
+
 
   function onSuccess(ref) {
     // Mark slot as booked
