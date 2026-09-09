@@ -1073,7 +1073,7 @@ function submitBooking() {
         event:     eventPayload,
         client:    { firstName:fname, lastName:lname, email:email, phone:phone, notes:notes },
         meetingType: mt.id,
-        adviserId:   adv.id,
+        adviserId:   state.meetingType ? state.meetingType.adviser : 'adviser_a',
       }),
     })
     .then(function(r) { return r.json(); })
