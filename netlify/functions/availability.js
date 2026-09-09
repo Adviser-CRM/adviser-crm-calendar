@@ -22,10 +22,10 @@ const ZOHO_OWNER_IDS = {
 // ── CORS headers ──────────────────────────────────────────────────
 function corsHeaders(origin) {
   const allowed = ALLOWED_ORIGINS.some(o => origin && origin.startsWith(o))
-    ? origin : ALLOWED_ORIGINS[0];
+    ? origin : '*';
   return {
     'Access-Control-Allow-Origin':  allowed,
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }
