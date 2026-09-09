@@ -108,14 +108,16 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
   const startEncoded = encodeURIComponent(startOfDay);
   const endEncoded   = encodeURIComponent(endOfDay);
 
-  const url = 'https://www.zohoapis.com/crm/v3/Events?fields=Event_Title,Start_DateTime,End_DateTime,Owner' +
-    '&per_page=50' +
-    '&sort_by=Created_Time' +
-    '&sort_order=desc';
+  // Search using Zoho CRM search API with date criteria
+  // This is more targeted than fetching all events
+  const searchUrl = 'https://www.zohoapis.com/crm/v3/Events/search' +
+    '?criteria=(Start_DateTime:between:' + encodeURIComponent(startOfDay + ',' + endOfDay) + ')' +
+    '&fields=Event_Title,Start_DateTime,End_DateTime,Owner' +
+    '&per_page=50';
 
-  console.log('[ACRM] Fetching events from:', url);
+  console.log('[ACRM] Search URL:', searchUrl);
 
-  const res = await fetch(url, {
+  const res = await fetch(searchUrl, {
     headers: {
       Authorization: 'Zoho-oauthtoken ' + token,
       'Content-Type': 'application/json',
@@ -123,28 +125,22 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
   });
 
   const text = await res.text();
-  console.log('[ACRM] Raw Zoho response:', text.substring(0, 500));
+  console.log('[ACRM] Raw Zoho response:', text.substring(0, 1000));
 
   let data;
   try { data = JSON.parse(text); }
   catch(e) { console.log('[ACRM] Parse error:', e.message); return []; }
 
   if (!data.data || !data.data.length) {
-    console.log('[ACRM] No events found');
+    console.log('[ACRM] No events found for date range');
     return [];
   }
 
-  // Filter by owner and date on our side
-  const startDay = new Date(startOfDay);
-  const endDay   = new Date(endOfDay);
-
+  // Filter by owner on our side
   data.data = data.data.filter(function(event) {
     if (!event.Start_DateTime) return false;
-    // Check owner
     if (event.Owner && event.Owner.id !== ownerId) return false;
-    // Check date range
-    const eventStart = new Date(event.Start_DateTime);
-    return eventStart >= startDay && eventStart <= endDay;
+    return true;
   });
 
   console.log('[ACRM] Filtered to', data.data.length, 'events for owner', ownerId);
