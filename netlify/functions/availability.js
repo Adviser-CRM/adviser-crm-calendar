@@ -151,6 +151,10 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
     }
   });
 
-  console.log('[ACRM] Busy slots:', busySlots);
-  return busySlots;
+  // Deduplicate slots
+  var unique = busySlots.filter(function(slot, idx) {
+    return busySlots.indexOf(slot) === idx;
+  });
+  console.log('[ACRM] Busy slots:', unique);
+  return unique;
 }
