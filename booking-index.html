@@ -568,7 +568,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
         </div>
         <div class="btn-row" style="margin-top:0;">
           <button class="btn-ghost" onclick="goToStep(1)">← Back</button>
-          <button class="btn-primary" id="btn-next-2-top" onclick="goToStep(3)" disabled>
+          <button class="btn-primary" id="btn-next-2" onclick="goToStep(3)" disabled>
             Continue <span>→</span>
           </button>
         </div>
@@ -1263,9 +1263,7 @@ function selectSlot(key, label) {
   var btn = document.querySelector('[data-slot="' + key + '"]');
   if (btn) btn.classList.add('selected');
   var btn2 = document.getElementById('btn-next-2');
-  var btn2t = document.getElementById('btn-next-2-top');
-  if (btn2)  btn2.disabled  = false;
-  if (btn2t) btn2t.disabled = false;
+  if (btn2) btn2.disabled = false;
 
   var bar  = document.getElementById('slot-confirm-bar');
   var text = document.getElementById('slot-confirm-text');
