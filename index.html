@@ -842,6 +842,8 @@ var state = {
   calYear:      new Date().getFullYear(),
   calMonth:     new Date().getMonth(),
   bookedSlots:  {}, // key: "YYYY-MM-DD-HH:MM" → true (mock booked)
+  busySlots:    {}, // key: "YYYY-MM-DD" → ["HH:MM", ...] from Zoho
+  loadingSlots: false,
 };
 
 // ── Init ──────────────────────────────────────────────────────────
@@ -1029,7 +1031,8 @@ function submitBooking() {
   // The endpoint receives this payload and creates the Event in Zoho CRM
   // For now we simulate success after a short delay
 
-  var BOOKING_ENDPOINT = ''; // Set to: 'https://your-api.advisercrm.co.nz/book'
+  var BOOKING_ENDPOINT      = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/book';
+  var AVAILABILITY_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/availability';
 
   function onSuccess(ref) {
     // Mark slot as booked
@@ -1210,7 +1213,61 @@ function selectDate(y, m, d) {
   var bar = document.getElementById('slot-confirm-bar');
   if (bar) bar.classList.remove('visible');
   renderCalendar();
-  renderSlots();
+
+  // Show loading state while fetching availability
+  var slotList = document.getElementById('slots-list');
+  var sdEl     = document.getElementById('slots-date');
+  var saEl     = document.getElementById('slots-adviser-label');
+  var slEl     = document.getElementById('slots-section-label');
+  var dateKey  = y + '-' + pad(m+1) + '-' + pad(d);
+
+  if (sdEl) sdEl.textContent = state.selectedDate.toLocaleDateString('en-NZ', { weekday:'long', day:'numeric', month:'long' });
+  if (saEl) saEl.textContent = state.meetingType ? state.meetingType.name + ' · ' + state.meetingType.duration + ' min per slot' : '';
+  if (slEl) slEl.style.display = '';
+
+  // Check if we already have availability cached for this date
+  if (state.busySlots[dateKey] !== undefined) {
+    renderSlots();
+    return;
+  }
+
+  // Show loading spinner
+  if (slotList) {
+    slotList.innerHTML = '<div class="slots-placeholder">' +
+      '<div class="slots-placeholder-icon" style="font-size:28px;animation:spin 1s linear infinite;">⟳</div>' +
+      '<div>Checking availability...</div></div>';
+  }
+
+  // Fetch availability from Zoho
+  fetchAvailability(dateKey);
+}
+
+function fetchAvailability(dateKey) {
+  if (!state.adviser || !AVAILABILITY_ENDPOINT) {
+    renderSlots();
+    return;
+  }
+
+  // Find which adviser key this is
+  var adviserKey = 'adviser_a';
+  var advKeys = Object.keys(ADVISERS);
+  for (var k = 0; k < advKeys.length; k++) {
+    if (ADVISERS[advKeys[k]] === state.adviser) { adviserKey = advKeys[k]; break; }
+  }
+  fetch(AVAILABILITY_ENDPOINT + '?adviserId=' + adviserKey + '&date=' + dateKey)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      // Cache the busy slots for this date
+      state.busySlots[dateKey] = data.busySlots || [];
+      console.log('[ACRM] Availability loaded for', dateKey, ':', state.busySlots[dateKey]);
+      renderSlots();
+    })
+    .catch(function(err) {
+      console.log('[ACRM] Availability fetch failed:', err);
+      // Fall back to showing all slots as available
+      state.busySlots[dateKey] = [];
+      renderSlots();
+    });
 }
 
 function renderSlots() {
@@ -1241,7 +1298,11 @@ function renderSlots() {
     return;
   }
   slotList.innerHTML = slots.map(function(s) {
-    var isBooked   = state.bookedSlots[s.key];
+    var dateKey    = s.key.substring(0, 10); // YYYY-MM-DD
+    var timeStr    = s.time; // HH:MM
+    var busyTimes  = state.busySlots[dateKey] || [];
+    var isBusy     = busyTimes.indexOf(timeStr) !== -1;
+    var isBooked   = state.bookedSlots[s.key] || isBusy;
     var isSelected = state.selectedSlot === s.key;
     var label      = fmtTime12(s.time);
     if (isBooked) {
