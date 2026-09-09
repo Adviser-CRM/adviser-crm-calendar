@@ -110,8 +110,8 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
 
   const url = 'https://www.zohoapis.com/crm/v3/Events?fields=Event_Title,Start_DateTime,End_DateTime,Owner' +
     '&per_page=50' +
-    '&sort_by=Start_DateTime' +
-    '&sort_order=asc';
+    '&sort_by=Created_Time' +
+    '&sort_order=desc';
 
   console.log('[ACRM] Fetching events from:', url);
 
