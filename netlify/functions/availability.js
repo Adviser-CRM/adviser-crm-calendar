@@ -103,19 +103,23 @@ async function getZohoToken() {
 
 // ── Get adviser events from Zoho CRM ─────────────────────────────
 async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
-  // Use COQL for reliable event searching
-  const query = "select Event_Title, Start_DateTime, End_DateTime from Events where Owner.id = '" +
-    ownerId + "' and Start_DateTime >= '" + startOfDay + "' and Start_DateTime <= '" + endOfDay + "'";
+  // Use Zoho CRM search API with criteria
+  // COQL doesn't support Owner.id in WHERE — use search instead
+  const startEncoded = encodeURIComponent(startOfDay);
+  const endEncoded   = encodeURIComponent(endOfDay);
 
-  console.log('[ACRM] COQL Query:', query);
+  const url = 'https://www.zohoapis.com/crm/v3/Events?fields=Event_Title,Start_DateTime,End_DateTime,Owner' +
+    '&per_page=50' +
+    '&sort_by=Start_DateTime' +
+    '&sort_order=asc';
 
-  const res = await fetch('https://www.zohoapis.com/crm/v3/coql', {
-    method: 'POST',
+  console.log('[ACRM] Fetching events from:', url);
+
+  const res = await fetch(url, {
     headers: {
       Authorization: 'Zoho-oauthtoken ' + token,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ select_query: query }),
   });
 
   const text = await res.text();
@@ -127,6 +131,26 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
 
   if (!data.data || !data.data.length) {
     console.log('[ACRM] No events found');
+    return [];
+  }
+
+  // Filter by owner and date on our side
+  const startDay = new Date(startOfDay);
+  const endDay   = new Date(endOfDay);
+
+  data.data = data.data.filter(function(event) {
+    if (!event.Start_DateTime) return false;
+    // Check owner
+    if (event.Owner && event.Owner.id !== ownerId) return false;
+    // Check date range
+    const eventStart = new Date(event.Start_DateTime);
+    return eventStart >= startDay && eventStart <= endDay;
+  });
+
+  console.log('[ACRM] Filtered to', data.data.length, 'events for owner', ownerId);
+
+  if (!data.data.length) {
+    console.log('[ACRM] No events for this adviser on this date');
     return [];
   }
 
