@@ -118,9 +118,24 @@ exports.handler = async function(event, context) {
       zoomJoinUrl = 'https://zoom.us (link will be sent separately)';
     }
 
-    // ── Step 2: Create Zoho CRM Event ──────────────────────────
+    // ── Step 2: Find/create CRM record + Create Zoho Event ────────
     try {
       const zohoToken = await getZohoToken();
+
+      // Find existing contact/lead/account or create new lead
+      let crmRecord = null;
+      try {
+        crmRecord = await findCRMRecord(zohoToken, client.email);
+        if (!crmRecord) {
+          console.log('[ACRM] Email not found — creating new Lead');
+          crmRecord = await createLead(zohoToken, client, mt.name);
+        } else {
+          console.log('[ACRM] Linked to existing', crmRecord.module, ':', crmRecord.name);
+        }
+      } catch(lookupErr) {
+        console.log('[ACRM] CRM lookup/create error:', lookupErr.message);
+      }
+
       const description = [
         'ONLINE BOOKING — Ref: ' + ref,
         '',
@@ -136,15 +151,30 @@ exports.handler = async function(event, context) {
         'Host start URL:   ' + (zoomStartUrl || 'N/A'),
       ].filter(Boolean).join('\n');
 
-      await createZohoEvent(zohoToken, {
+      // Build event data with CRM link
+      const eventData = {
         Event_Title:    mt.name + ' — ' + clientName + ' (Online Booking)',
         Start_DateTime: toNZISO(evt.Start_DateTime),
         End_DateTime:   toNZISO(evt.End_DateTime),
         Owner:          { id: getZohoOwnerId(adviserId) },
         Venue:          zoomJoinUrl || 'Online — Zoom',
         Description:    description,
-      });
-      console.log('[ACRM] Zoho event created');
+      };
+
+      // Link to CRM record if found/created
+      if (crmRecord) {
+        if (crmRecord.module === 'Contacts' || crmRecord.module === 'Leads') {
+          eventData['$se_module'] = crmRecord.module;
+          eventData.Who_Id = { id: crmRecord.id };
+        } else if (crmRecord.module === 'Accounts') {
+          eventData['$se_module'] = 'Accounts';
+          eventData.What_Id = { id: crmRecord.id };
+        }
+        console.log('[ACRM] Event linked to', crmRecord.module, crmRecord.id);
+      }
+
+      await createZohoEvent(zohoToken, eventData);
+      console.log('[ACRM] Zoho event created and linked');
     } catch (zohoErr) {
       console.error('[ACRM] Zoho error:', zohoErr.message);
       // Don't fail — log and continue
@@ -275,6 +305,55 @@ async function createZohoEvent(token, eventData) {
     throw new Error('Zoho event failed: ' + JSON.stringify(data.data[0]));
   }
   return data;
+}
+
+// ── Find contact/lead/account by email ────────────────────────────
+async function findCRMRecord(token, email) {
+  // Search in order: Contacts → Leads → Accounts
+  const modules = ['Contacts', 'Leads', 'Accounts'];
+
+  for (const module of modules) {
+    try {
+      const res = await fetch(
+        'https://www.zohoapis.com/crm/v3/' + module + '/search?email=' + encodeURIComponent(email) + '&fields=id,Full_Name,Email',
+        { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
+      );
+      const data = await res.json();
+      if (data.data && data.data.length > 0) {
+        console.log('[ACRM] Found in', module, ':', data.data[0].id);
+        return { module: module, id: data.data[0].id, name: data.data[0].Full_Name || data.data[0].Account_Name };
+      }
+    } catch(e) {
+      console.log('[ACRM] Error searching', module, ':', e.message);
+    }
+  }
+  return null;
+}
+
+// ── Create new Lead ────────────────────────────────────────────────
+async function createLead(token, client, meetingType) {
+  const nameParts = client.firstName.trim().split(' ');
+  const res = await fetch('https://www.zohoapis.com/crm/v3/Leads', {
+    method:  'POST',
+    headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      data: [{
+        First_Name:   client.firstName,
+        Last_Name:    client.lastName || 'Unknown',
+        Email:        client.email,
+        Phone:        client.phone,
+        Lead_Source:  'Online Booking',
+        Description:  'Created via online booking — ' + meetingType + '\n' +
+                      (client.notes ? 'Notes: ' + client.notes : ''),
+      }]
+    }),
+  });
+  const data = await res.json();
+  if (data.data && data.data[0] && data.data[0].status === 'success') {
+    console.log('[ACRM] Lead created:', data.data[0].details.id);
+    return { module: 'Leads', id: data.data[0].details.id, name: client.firstName + ' ' + client.lastName };
+  }
+  throw new Error('Lead creation failed: ' + JSON.stringify(data));
 }
 
 // Map adviser key to Zoho user ID
