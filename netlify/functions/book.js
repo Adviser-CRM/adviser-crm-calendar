@@ -316,17 +316,19 @@ async function sendEmail({ to, subject, html }) {
 
 // ── Email templates ───────────────────────────────────────────────
 function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoomId, zoomPassword, ref }) {
-  const logoUrl = 'https://adviser-crm.github.io/adviser-crm-widgets/calendar/acrm-logo-white-calendar.webp';
+  const logoUrl = 'https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-email.png';
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">' +
   '<div style="max-width:600px;margin:0 auto;padding:24px 16px;">' +
 
     // Header
     '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:32px 32px 28px;text-align:center;">' +
-      '<img src="' + logoUrl + '" alt="Adviser CRM" style="height:40px;margin-bottom:16px;" />' +
-      '<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border-radius:20px;padding:6px 16px;margin-bottom:8px;">' +
-        '<span style="color:#fff;font-size:13px;font-weight:600;">✓ Meeting Confirmed</span>' +
-      '</div>' +
-      '<h1 style="color:#fff;margin:0;font-size:24px;font-weight:700;">Your ' + mt.name + ' is booked!</h1>' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:20px;">' +
+        '<img src="' + logoUrl + '" alt="Adviser CRM" height="36" style="height:36px;border:0;display:inline-block;" />' +
+      '</td></tr></table>' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:12px;">' +
+        '<span style="display:inline-block;background:rgba(255,255,255,0.18);border-radius:20px;padding:6px 18px;color:#fff;font-size:13px;font-weight:600;">&#10003; Meeting Confirmed</span>' +
+      '</td></tr></table>' +
+      '<h1 style="color:#fff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">Your ' + mt.name + ' is booked!</h1>' +
     '</div>' +
 
     // Body
@@ -363,7 +365,7 @@ function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoom
 }
 
 function adviserEmailHtml({ clientName, client, mt, dateLabel, zoomStartUrl, zoomJoinUrl, zoomId, ref }) {
-  const logoUrl = 'https://adviser-crm.github.io/adviser-crm-widgets/calendar/acrm-logo-white-calendar.webp';
+  const logoUrl = 'https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-email.png';
   const notesRow = client.notes
     ? '<tr><td style="padding:8px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Notes</span></td><td style="padding:8px 0;border-bottom:1px solid #e8edf2;text-align:right;color:#1a2b3c;">' + client.notes + '</td></tr>'
     : '';
@@ -372,16 +374,15 @@ function adviserEmailHtml({ clientName, client, mt, dateLabel, zoomStartUrl, zoo
   '<div style="max-width:600px;margin:0 auto;padding:24px 16px;">' +
 
     // Header
-    '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;">' +
-      '<div>' +
-        '<img src="' + logoUrl + '" alt="Adviser CRM" style="height:32px;margin-bottom:10px;display:block;" />' +
-        '<h1 style="color:#fff;margin:0;font-size:18px;font-weight:700;">New Booking: ' + mt.name + '</h1>' +
-        '<p style="color:#00ABE6;margin:4px 0 0;font-size:13px;font-family:monospace;">Ref: ' + ref + '</p>' +
-      '</div>' +
-      '<div style="background:rgba(0,171,230,0.2);border-radius:12px;padding:10px 16px;text-align:center;">' +
-        '<div style="color:#00ABE6;font-size:22px;">📋</div>' +
-        '<div style="color:#fff;font-size:11px;font-weight:600;margin-top:4px;">NEW</div>' +
-      '</div>' +
+    '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:16px;">' +
+        '<img src="' + logoUrl + '" alt="Adviser CRM" height="34" style="height:34px;border:0;display:inline-block;" />' +
+      '</td></tr></table>' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:10px;">' +
+        '<span style="display:inline-block;background:rgba(0,171,230,0.25);border-radius:8px;padding:6px 16px;color:#00ABE6;font-size:12px;font-weight:700;letter-spacing:0.08em;">NEW BOOKING</span>' +
+      '</td></tr></table>' +
+      '<h1 style="color:#fff;margin:0 0 6px;font-size:20px;font-weight:700;">' + mt.name + '</h1>' +
+      '<p style="color:rgba(255,255,255,0.6);margin:0;font-size:13px;font-family:monospace;">Ref: ' + ref + '</p>' +
     '</div>' +
 
     // Body
