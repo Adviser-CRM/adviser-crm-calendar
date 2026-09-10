@@ -430,9 +430,16 @@ function handleReschedule() {
         alert('Could not cancel original booking: ' + data.error);
         return;
       }
-      // Original cancelled — redirect to booking page
-      // Pass ref so booking page knows this is a reschedule
-      window.location.href = 'https://calendar.advisercrm.co.nz?rescheduled=' + encodeURIComponent(bookingData.ref || '');
+      // Original cancelled — redirect with full client details from Zoho
+      var client = data.client || {};
+      var urlParams = new URLSearchParams({
+        rescheduled: bookingData.ref || '',
+        fn: client.firstName || '',
+        ln: client.lastName  || '',
+        em: client.email     || '',
+        ph: client.phone     || '',
+      });
+      window.location.href = 'https://calendar.advisercrm.co.nz?' + urlParams.toString();
     })
     .catch(function() {
       btn.disabled    = false;

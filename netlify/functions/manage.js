@@ -129,10 +129,25 @@ exports.handler = async function(event) {
         console.log('[ACRM] Zoho reschedule error:', e.message);
       }
 
+      // Get client details from Zoho Event
+      let clientDetails = null;
+      try {
+        const zohoToken3 = await getZohoToken();
+        clientDetails = await getClientDetailsFromZoho(zohoToken3, ref);
+        console.log('[ACRM] Client details retrieved:', clientDetails);
+      } catch(e) {
+        console.log('[ACRM] Could not get client details:', e.message);
+      }
+
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ success: true, action: 'reschedule_ready', ref }),
+        body: JSON.stringify({
+          success: true,
+          action: 'reschedule_ready',
+          ref,
+          client: clientDetails,
+        }),
       };
     }
 
@@ -233,6 +248,44 @@ async function getZohoToken() {
   const data = await res.json();
   if (!data.access_token) throw new Error('Zoho token failed');
   return data.access_token;
+}
+
+async function getClientDetailsFromZoho(token, ref) {
+  // Search for the Zoho Event by ref and extract client details from description
+  try {
+    const criteria = encodeURIComponent('(Description:contains:' + ref + ')');
+    const res = await fetch(
+      'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria +
+      '&fields=id,Event_Title,Description,Who_Id',
+      { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
+    );
+    const data = await res.json();
+    if (!data.data || !data.data.length) return null;
+
+    const desc = data.data[0].Description || '';
+    console.log('[ACRM] Found Zoho event for ref:', ref);
+
+    // Parse client details from description
+    // Format: "Client: First Last
+Email:  email
+Phone:  phone"
+    const clientMatch = desc.match(/Client:\s*(.+)/);
+    const emailMatch  = desc.match(/Email:\s*(.+)/);
+    const phoneMatch  = desc.match(/Phone:\s*(.+)/);
+
+    const fullName  = clientMatch ? clientMatch[1].trim() : '';
+    const nameParts = fullName.split(' ');
+
+    return {
+      firstName: nameParts[0] || '',
+      lastName:  nameParts.slice(1).join(' ') || '',
+      email:     emailMatch ? emailMatch[1].trim() : '',
+      phone:     phoneMatch ? phoneMatch[1].trim() : '',
+    };
+  } catch(e) {
+    console.log('[ACRM] Error getting client details:', e.message);
+    return null;
+  }
 }
 
 async function cancelZohoEvent(token, ref, label) {
