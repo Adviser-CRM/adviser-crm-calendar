@@ -422,7 +422,7 @@ async function sendEmail({ to, subject, html }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from:    process.env.EMAIL_FROM || 'bookings@advisercrm.co.nz',
+      from:    'Adviser CRM Bookings <' + (process.env.EMAIL_FROM || 'bookings@calendar.advisercrm.co.nz') + '>',
       to:      [to],
       subject: subject,
       html:    html,
