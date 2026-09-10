@@ -316,59 +316,110 @@ async function sendEmail({ to, subject, html }) {
 
 // ── Email templates ───────────────────────────────────────────────
 function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoomId, zoomPassword, ref }) {
-  return `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:#07385D;padding:24px;border-radius:12px 12px 0 0;text-align:center;">
-    <h1 style="color:#fff;margin:0;font-size:22px;">Booking Confirmed ✓</h1>
-  </div>
-  <div style="background:#fff;padding:28px;border:1px solid #e8edf2;border-top:none;border-radius:0 0 12px 12px;">
-    <p style="color:#5a7080;">Hi ${clientName},</p>
-    <p style="color:#1a2b3c;">Your <strong>${mt.name}</strong> has been confirmed. Here are your details:</p>
-    <table style="width:100%;border-collapse:collapse;margin:20px 0;">
-      <tr><td style="padding:10px;background:#f4f7fa;font-weight:600;color:#07385D;width:40%;">Meeting</td><td style="padding:10px;border-bottom:1px solid #e8edf2;">${mt.name}</td></tr>
-      <tr><td style="padding:10px;background:#f4f7fa;font-weight:600;color:#07385D;">Date & Time</td><td style="padding:10px;border-bottom:1px solid #e8edf2;">${dateLabel} (NZ Time)</td></tr>
-      <tr><td style="padding:10px;background:#f4f7fa;font-weight:600;color:#07385D;">Duration</td><td style="padding:10px;border-bottom:1px solid #e8edf2;">${mt.duration} minutes</td></tr>
-      <tr><td style="padding:10px;background:#f4f7fa;font-weight:600;color:#07385D;">Meeting ID</td><td style="padding:10px;border-bottom:1px solid #e8edf2;">${zoomId || 'See link below'}</td></tr>
-      <tr><td style="padding:10px;background:#f4f7fa;font-weight:600;color:#07385D;">Passcode</td><td style="padding:10px;border-bottom:1px solid #e8edf2;">${zoomPassword || 'N/A'}</td></tr>
-      <tr><td style="padding:10px;background:#f4f7fa;font-weight:600;color:#07385D;">Reference</td><td style="padding:10px;">${ref}</td></tr>
-    </table>
-    <div style="text-align:center;margin:28px 0;">
-      <a href="${zoomJoinUrl}" style="background:#00ABE6;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;">Join Zoom Meeting</a>
-    </div>
-    <p style="color:#5a7080;font-size:13px;">Or copy this link into your browser:<br><a href="${zoomJoinUrl}" style="color:#00ABE6;">${zoomJoinUrl}</a></p>
-    <hr style="border:none;border-top:1px solid #e8edf2;margin:24px 0;">
-    <p style="color:#98aab8;font-size:12px;text-align:center;">Need to reschedule? Reply to this email or contact us at support@advisercrm.co.nz</p>
-    <p style="color:#98aab8;font-size:12px;text-align:center;">© Adviser CRM · Designed for Advice. Built for Growth.</p>
-  </div>
-</body></html>`;
+  const logoUrl = 'https://adviser-crm.github.io/adviser-crm-widgets/calendar/acrm-logo-white-calendar.webp';
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">' +
+  '<div style="max-width:600px;margin:0 auto;padding:24px 16px;">' +
+
+    // Header
+    '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:32px 32px 28px;text-align:center;">' +
+      '<img src="' + logoUrl + '" alt="Adviser CRM" style="height:40px;margin-bottom:16px;" />' +
+      '<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border-radius:20px;padding:6px 16px;margin-bottom:8px;">' +
+        '<span style="color:#fff;font-size:13px;font-weight:600;">✓ Meeting Confirmed</span>' +
+      '</div>' +
+      '<h1 style="color:#fff;margin:0;font-size:24px;font-weight:700;">Your ' + mt.name + ' is booked!</h1>' +
+    '</div>' +
+
+    // Body
+    '<div style="background:#fff;padding:32px;border:1px solid #e8edf2;border-top:none;border-radius:0 0 16px 16px;">' +
+      '<p style="color:#5a7080;margin:0 0 20px;">Hi ' + clientName + ',</p>' +
+      '<p style="color:#1a2b3c;margin:0 0 24px;">Your meeting has been confirmed. Here are your booking details:</p>' +
+
+      // Detail cards
+      '<div style="background:#f4f7fa;border-radius:12px;padding:20px;margin-bottom:24px;">' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+          '<tr><td style="padding:8px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Meeting</span></td><td style="padding:8px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#07385D;">' + mt.name + '</td></tr>' +
+          '<tr><td style="padding:8px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Date & Time</span></td><td style="padding:8px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#07385D;">' + dateLabel + '</td></tr>' +
+          '<tr><td style="padding:8px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Duration</span></td><td style="padding:8px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#07385D;">' + mt.duration + ' minutes</td></tr>' +
+          '<tr><td style="padding:8px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Zoom ID</span></td><td style="padding:8px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#07385D;">' + (zoomId || '—') + '</td></tr>' +
+          '<tr><td style="padding:8px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Passcode</span></td><td style="padding:8px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#07385D;">' + (zoomPassword || '—') + '</td></tr>' +
+          '<tr><td style="padding:8px 0;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Reference</span></td><td style="padding:8px 0;text-align:right;font-family:monospace;font-size:13px;color:#07385D;font-weight:700;">' + ref + '</td></tr>' +
+        '</table>' +
+      '</div>' +
+
+      // Zoom button
+      '<div style="text-align:center;margin:28px 0;">' +
+        '<a href="' + zoomJoinUrl + '" style="display:inline-block;background:linear-gradient(135deg,#00ABE6 0%,#0089b8 100%);color:#fff;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:700;font-size:16px;box-shadow:0 4px 14px rgba(0,171,230,0.3);">Join Zoom Meeting →</a>' +
+      '</div>' +
+
+      '<p style="color:#98aab8;font-size:12px;text-align:center;margin:0 0 4px;">Or copy this link: <a href="' + zoomJoinUrl + '" style="color:#00ABE6;">' + zoomJoinUrl + '</a></p>' +
+
+      '<hr style="border:none;border-top:1px solid #e8edf2;margin:24px 0;">' +
+
+      '<p style="color:#98aab8;font-size:12px;text-align:center;margin:0 0 4px;">Need to reschedule? Reply to this email or contact us at <a href="mailto:support@advisercrm.co.nz" style="color:#00ABE6;">support@advisercrm.co.nz</a></p>' +
+      '<p style="color:#c8d5de;font-size:11px;text-align:center;margin:8px 0 0;">© 2026 Adviser CRM · Designed for Advice. Built for Growth.</p>' +
+    '</div>' +
+  '</div>' +
+  '</body></html>';
 }
 
 function adviserEmailHtml({ clientName, client, mt, dateLabel, zoomStartUrl, zoomJoinUrl, zoomId, ref }) {
-  return `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:#07385D;padding:20px;border-radius:12px 12px 0 0;">
-    <h1 style="color:#fff;margin:0;font-size:18px;">New Booking: ${mt.name}</h1>
-    <p style="color:#00ABE6;margin:4px 0 0;">Ref: ${ref}</p>
-  </div>
-  <div style="background:#fff;padding:24px;border:1px solid #e8edf2;border-top:none;border-radius:0 0 12px 12px;">
-    <h2 style="color:#07385D;font-size:15px;">Client Details</h2>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-      <tr><td style="padding:8px;background:#f4f7fa;font-weight:600;color:#07385D;width:35%;">Name</td><td style="padding:8px;border-bottom:1px solid #e8edf2;">${clientName}</td></tr>
-      <tr><td style="padding:8px;background:#f4f7fa;font-weight:600;color:#07385D;">Email</td><td style="padding:8px;border-bottom:1px solid #e8edf2;"><a href="mailto:${client.email}">${client.email}</a></td></tr>
-      <tr><td style="padding:8px;background:#f4f7fa;font-weight:600;color:#07385D;">Phone</td><td style="padding:8px;border-bottom:1px solid #e8edf2;">${client.phone}</td></tr>
-      ${client.notes ? `<tr><td style="padding:8px;background:#f4f7fa;font-weight:600;color:#07385D;">Notes</td><td style="padding:8px;border-bottom:1px solid #e8edf2;">${client.notes}</td></tr>` : ''}
-    </table>
-    <h2 style="color:#07385D;font-size:15px;">Meeting Details</h2>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-      <tr><td style="padding:8px;background:#f4f7fa;font-weight:600;color:#07385D;width:35%;">Type</td><td style="padding:8px;border-bottom:1px solid #e8edf2;">${mt.name}</td></tr>
-      <tr><td style="padding:8px;background:#f4f7fa;font-weight:600;color:#07385D;">Date & Time</td><td style="padding:8px;border-bottom:1px solid #e8edf2;">${dateLabel} (NZ Time)</td></tr>
-      <tr><td style="padding:8px;background:#f4f7fa;font-weight:600;color:#07385D;">Duration</td><td style="padding:8px;border-bottom:1px solid #e8edf2;">${mt.duration} minutes</td></tr>
-      <tr><td style="padding:8px;background:#f4f7fa;font-weight:600;color:#07385D;">Zoom ID</td><td style="padding:8px;">${zoomId || 'See link'}</td></tr>
-    </table>
-    <div style="text-align:center;margin:20px 0;">
-      <a href="${zoomStartUrl || zoomJoinUrl}" style="background:#059669;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;">Start Zoom Meeting (Host Link)</a>
-    </div>
-    <p style="color:#98aab8;font-size:12px;text-align:center;">This is your private host link — do not share with the client.</p>
-  </div>
-</body></html>`;
+  const logoUrl = 'https://adviser-crm.github.io/adviser-crm-widgets/calendar/acrm-logo-white-calendar.webp';
+  const notesRow = client.notes
+    ? '<tr><td style="padding:8px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Notes</span></td><td style="padding:8px 0;border-bottom:1px solid #e8edf2;text-align:right;color:#1a2b3c;">' + client.notes + '</td></tr>'
+    : '';
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">' +
+  '<div style="max-width:600px;margin:0 auto;padding:24px 16px;">' +
+
+    // Header
+    '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;">' +
+      '<div>' +
+        '<img src="' + logoUrl + '" alt="Adviser CRM" style="height:32px;margin-bottom:10px;display:block;" />' +
+        '<h1 style="color:#fff;margin:0;font-size:18px;font-weight:700;">New Booking: ' + mt.name + '</h1>' +
+        '<p style="color:#00ABE6;margin:4px 0 0;font-size:13px;font-family:monospace;">Ref: ' + ref + '</p>' +
+      '</div>' +
+      '<div style="background:rgba(0,171,230,0.2);border-radius:12px;padding:10px 16px;text-align:center;">' +
+        '<div style="color:#00ABE6;font-size:22px;">📋</div>' +
+        '<div style="color:#fff;font-size:11px;font-weight:600;margin-top:4px;">NEW</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Body
+    '<div style="background:#fff;padding:32px;border:1px solid #e8edf2;border-top:none;border-radius:0 0 16px 16px;">' +
+
+      // Client details
+      '<h2 style="color:#07385D;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;">Client Details</h2>' +
+      '<div style="background:#f4f7fa;border-radius:12px;padding:16px 20px;margin-bottom:24px;">' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+          '<tr><td style="padding:7px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Name</span></td><td style="padding:7px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#1a2b3c;">' + clientName + '</td></tr>' +
+          '<tr><td style="padding:7px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Email</span></td><td style="padding:7px 0;border-bottom:1px solid #e8edf2;text-align:right;"><a href="mailto:' + client.email + '" style="color:#00ABE6;font-weight:600;">' + client.email + '</a></td></tr>' +
+          '<tr><td style="padding:7px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Phone</span></td><td style="padding:7px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#1a2b3c;">' + client.phone + '</td></tr>' +
+          notesRow +
+        '</table>' +
+      '</div>' +
+
+      // Meeting details
+      '<h2 style="color:#07385D;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;">Meeting Details</h2>' +
+      '<div style="background:#f4f7fa;border-radius:12px;padding:16px 20px;margin-bottom:24px;">' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+          '<tr><td style="padding:7px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Type</span></td><td style="padding:7px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#07385D;">' + mt.name + '</td></tr>' +
+          '<tr><td style="padding:7px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Date & Time</span></td><td style="padding:7px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#07385D;">' + dateLabel + '</td></tr>' +
+          '<tr><td style="padding:7px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Duration</span></td><td style="padding:7px 0;border-bottom:1px solid #e8edf2;text-align:right;font-weight:600;color:#07385D;">' + mt.duration + ' minutes</td></tr>' +
+          '<tr><td style="padding:7px 0;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Zoom ID</span></td><td style="padding:7px 0;text-align:right;font-weight:600;color:#07385D;">' + (zoomId || '—') + '</td></tr>' +
+        '</table>' +
+      '</div>' +
+
+      // Host button
+      '<div style="text-align:center;margin:24px 0 16px;">' +
+        '<a href="' + (zoomStartUrl || zoomJoinUrl) + '" style="display:inline-block;background:linear-gradient(135deg,#059669 0%,#047857 100%);color:#fff;padding:14px 36px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;box-shadow:0 4px 14px rgba(5,150,105,0.3);">Start Zoom Meeting (Host Link) →</a>' +
+      '</div>' +
+      '<p style="color:#98aab8;font-size:11px;text-align:center;margin:0 0 20px;">⚠ This is your private host link — do not share with the client</p>' +
+
+      '<hr style="border:none;border-top:1px solid #e8edf2;margin:20px 0;">' +
+      '<p style="color:#c8d5de;font-size:11px;text-align:center;margin:0;">© 2026 Adviser CRM · Designed for Advice. Built for Growth.</p>' +
+    '</div>' +
+  '</div>' +
+  '</body></html>';
 }
 
 // ── Utility helpers ───────────────────────────────────────────────
@@ -387,7 +438,12 @@ function toNZISO(dateStr) {
 function formatDateTime(dateStr) {
   if (!dateStr) return '—';
   try {
-    return new Date(dateStr).toLocaleString('en-NZ', {
+    // If no timezone info, append NZ offset to avoid UTC misinterpretation
+    var str = dateStr;
+    if (!str.includes('+') && !str.includes('Z') && !str.includes('z')) {
+      str = str + '+12:00';
+    }
+    return new Date(str).toLocaleString('en-NZ', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       hour: '2-digit', minute: '2-digit', hour12: true,
       timeZone: 'Pacific/Auckland',
