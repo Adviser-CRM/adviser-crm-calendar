@@ -960,9 +960,28 @@ function selectMeeting(id) {
 
   state.meetingType = mt;
   state.adviser     = ADVISERS[mt.adviser];
-  state.selectedDate = null;
-  state.selectedSlot = null;
+  state.selectedDate      = null;
+  state.selectedSlot      = null;
   state.selectedSlotLabel = null;
+
+  // Clear confirm bar and reset slots panel
+  var bar = document.getElementById('slot-confirm-bar');
+  if (bar) bar.classList.remove('visible');
+  var btn2 = document.getElementById('btn-next-2');
+  if (btn2) btn2.disabled = true;
+  var slotList = document.getElementById('slots-list');
+  var sdEl     = document.getElementById('slots-date');
+  var slEl     = document.getElementById('slots-section-label');
+  if (sdEl) sdEl.textContent = 'Select a date';
+  if (slEl) slEl.style.display = 'none';
+  if (slotList) slotList.innerHTML =
+    '<div class="slots-placeholder">' +
+    '<div class="slots-placeholder-card">' +
+    '<div class="slots-placeholder-icon-wrap">&#128197;</div>' +
+    '<p class="slots-placeholder-text">Select a date to see available times</p>' +
+    '<p class="slots-placeholder-sub">Choose any highlighted date on the calendar</p>' +
+    '<div class="slots-placeholder-arrow">&#8592; </div>' +
+    '</div></div>';
 
   // Highlight selected card
   document.querySelectorAll('.meeting-card').forEach(function(c) {
