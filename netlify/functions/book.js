@@ -159,6 +159,7 @@ exports.handler = async function(event, context) {
         Owner:          { id: getZohoOwnerId(adviserId) },
         Venue:          zoomJoinUrl || 'Online — Zoom',
         Description:    description,
+        Agenda:         client.notes || mt.name + ' with ' + clientName,
       };
 
       // Link to CRM record if found/created
