@@ -159,7 +159,7 @@ exports.handler = async function(event, context) {
         Owner:          { id: getZohoOwnerId(adviserId) },
         Venue:          zoomJoinUrl || 'Online — Zoom',
         Description:    description,
-        Agenda:         client.notes || mt.name + ' with ' + clientName,
+        // Agenda field removed — notes added via linked Note record instead
       };
 
       // Link to CRM record if found/created
@@ -174,8 +174,16 @@ exports.handler = async function(event, context) {
         console.log('[ACRM] Event linked to', crmRecord.module, crmRecord.id);
       }
 
-      await createZohoEvent(zohoToken, eventData);
+      const eventResult = await createZohoEvent(zohoToken, eventData);
       console.log('[ACRM] Zoho event created and linked');
+
+      // Add client notes as a linked Note on the Event
+      if (client.notes && client.notes.trim() && eventResult.data && eventResult.data[0]) {
+        const eventId = eventResult.data[0].details && eventResult.data[0].details.id;
+        if (eventId) {
+          await createEventNote(zohoToken, eventId, clientName, client.notes, ref);
+        }
+      }
     } catch (zohoErr) {
       console.error('[ACRM] Zoho error:', zohoErr.message);
       // Don't fail — log and continue
@@ -355,6 +363,29 @@ async function createLead(token, client, meetingType) {
     return { module: 'Leads', id: data.data[0].details.id, name: client.firstName + ' ' + client.lastName };
   }
   throw new Error('Lead creation failed: ' + JSON.stringify(data));
+}
+
+// ── Create a Note linked to an Event ─────────────────────────────
+async function createEventNote(token, eventId, clientName, notes, ref) {
+  if (!notes || !notes.trim()) return; // Only create note if there are notes
+  const res = await fetch('https://www.zohoapis.com/crm/v3/Notes', {
+    method:  'POST',
+    headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      data: [{
+        Note_Title:   'Client Notes — ' + clientName,
+        Note_Content: notes,
+        Parent_Id:    { id: eventId },
+        se_module:    'Events',
+      }]
+    }),
+  });
+  const data = await res.json();
+  if (data.data && data.data[0] && data.data[0].status === 'success') {
+    console.log('[ACRM] Note created for event:', eventId);
+  } else {
+    console.log('[ACRM] Note creation failed:', JSON.stringify(data));
+  }
 }
 
 // Map adviser key to Zoho user ID
