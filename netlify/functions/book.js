@@ -200,7 +200,9 @@ exports.handler = async function(event, context) {
     }
 
     // ── Step 3: Send emails ─────────────────────────────────────
-    const dateLabel = formatDateTime(evt.Start_DateTime);
+    const dateLabel   = formatDateTime(evt.Start_DateTime);
+    const manageToken = generateManageToken(ref, zoomId, evt.Start_DateTime);
+    const manageUrl   = 'https://calendar.advisercrm.co.nz/manage.html?token=' + manageToken;
 
     // Client email
     try {
@@ -209,7 +211,7 @@ exports.handler = async function(event, context) {
         subject: 'Your ' + mt.name + ' is confirmed — ' + dateLabel,
         html:    clientEmailHtml({
           clientName, mt, adviser, dateLabel, zoomJoinUrl,
-          zoomId, zoomPassword, ref,
+          zoomId, zoomPassword, ref, manageUrl,
         }),
       });
       console.log('[ACRM] Client email sent to:', client.email);
@@ -436,7 +438,7 @@ async function sendEmail({ to, subject, html }) {
 }
 
 // ── Email templates ───────────────────────────────────────────────
-function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoomId, zoomPassword, ref }) {
+function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoomId, zoomPassword, ref, manageUrl }) {
   const logoUrl = 'https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-email.png';
   // Text logo fallback — always visible in email clients
   const logoHtml = '<span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">ADVISER</span><span style="font-size:22px;font-weight:300;color:#00ABE6;letter-spacing:-0.5px;"> CRM</span>';
@@ -488,8 +490,16 @@ function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoom
 
       '<hr style="border:none;border-top:1px solid #e8edf2;margin:24px 0;">' +
 
-      '<p style="color:#98aab8;font-size:12px;text-align:center;margin:0 0 4px;">Need to reschedule? Reply to this email or contact us at <a href="mailto:support@advisercrm.co.nz" style="color:#00ABE6;">support@advisercrm.co.nz</a></p>' +
-      '<p style="color:#c8d5de;font-size:11px;text-align:center;margin:8px 0 0;">© 2026 Adviser CRM · Designed for Advice. Built for Growth.</p>' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;"><tr>' +
+        '<td align="center" style="padding:4px;">' +
+          '<a href="' + manageUrl + '" style="display:inline-block;background:#f4f7fa;border:1.5px solid #e8edf2;color:#5a7080;padding:10px 24px;border-radius:10px;text-decoration:none;font-size:13px;font-weight:600;margin:4px;">Reschedule</a>' +
+        '</td>' +
+        '<td align="center" style="padding:4px;">' +
+          '<a href="' + manageUrl + '&action=cancel" style="display:inline-block;background:#f4f7fa;border:1.5px solid #e8edf2;color:#dc2626;padding:10px 24px;border-radius:10px;text-decoration:none;font-size:13px;font-weight:600;margin:4px;">Cancel Booking</a>' +
+        '</td>' +
+      '</tr></table>' +
+      '<p style="color:#98aab8;font-size:11px;text-align:center;margin:12px 0 4px;">Need help? Contact us at <a href="mailto:support@advisercrm.co.nz" style="color:#00ABE6;">support@advisercrm.co.nz</a></p>' +
+      '<p style="color:#c8d5de;font-size:11px;text-align:center;margin:4px 0 0;">© 2026 Adviser CRM · Designed for Advice. Built for Growth.</p>' +
     '</div>' +
   '</div>' +
   '</body></html>';
@@ -566,6 +576,12 @@ function adviserEmailHtml({ clientName, client, mt, dateLabel, zoomStartUrl, zoo
 // ── Utility helpers ───────────────────────────────────────────────
 function generateRef() {
   return 'ACR-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+function generateManageToken(ref, zoomId, startDateTime) {
+  // Encode booking details into a base64 token — no storage needed
+  const payload = [ref, String(zoomId || ''), startDateTime || ''].join('|');
+  return Buffer.from(payload).toString('base64url');
 }
 
 function toNZISO(dateStr) {

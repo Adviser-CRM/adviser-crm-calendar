@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manage Booking — Adviser CRM</title>
+<link rel="icon" type="image/x-icon" href="./favicon.ico">
+<link rel="icon" type="image/png" href="./favicon.png">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:    #07385D;
+  --blue:    #00ABE6;
+  --blue-lt: #e8f7fd;
+  --blue-dk: #0089b8;
+  --ink:     #1a2b3c;
+  --mid:     #5a7080;
+  --muted:   #98aab8;
+  --divider: #e8edf2;
+  --bg:      #f4f7fa;
+  --red:     #dc2626;
+  --red-lt:  #fef2f2;
+  --green:   #059669;
+  --green-lt:#d1fae5;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+html, body { height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ── */
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Left Panel ── */
+.left {
+  background: linear-gradient(160deg, var(--navy) 0%, #0a4f82 100%);
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+}
+.left-logo img { height: 40px; margin-bottom: 40px; }
+.left-logo-fallback {
+  font-size: 20px; font-weight: 700;
+  color: #fff; margin-bottom: 40px;
+}
+.left-heading {
+  font-size: 26px; font-weight: 700;
+  color: #fff; line-height: 1.25;
+  margin-bottom: 10px; letter-spacing: -0.5px;
+}
+.left-sub { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.6; }
+
+/* ── Right Panel ── */
+.right {
+  flex: 1;
+  padding: 40px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.manage-card {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid var(--divider);
+  padding: 36px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 4px 24px rgba(7,56,93,0.07);
+}
+
+/* ── Loading ── */
+.loading {
+  text-align: center;
+  padding: 48px 0;
+}
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--divider);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: var(--mid); font-size: 14px; }
+
+/* ── Booking details ── */
+.booking-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.booking-icon {
+  width: 56px; height: 56px;
+  background: var(--blue-lt);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  margin: 0 auto 14px;
+}
+.booking-title {
+  font-size: 20px; font-weight: 700;
+  color: var(--navy); margin-bottom: 4px;
+}
+.booking-ref {
+  font-size: 12px; color: var(--muted);
+  font-family: monospace;
+}
+
+/* ── Detail table ── */
+.detail-table {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 4px 16px;
+  margin-bottom: 28px;
+}
+.detail-row {
+  display: flex; justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--divider);
+  gap: 12px;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.06em; flex-shrink: 0;
+}
+.detail-value {
+  font-size: 13px; font-weight: 600;
+  color: var(--navy); text-align: right;
+}
+
+/* ── Action buttons ── */
+.actions { display: flex; flex-direction: column; gap: 10px; }
+.btn-reschedule {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dk) 100%);
+  color: #fff; border: none; border-radius: 12px;
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,171,230,0.25);
+}
+.btn-reschedule:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,171,230,0.35);
+}
+.btn-cancel {
+  width: 100%; padding: 14px;
+  background: #fff; color: var(--red);
+  border: 1.5px solid #fecaca; border-radius: 12px;
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-cancel:hover { background: var(--red-lt); border-color: var(--red); }
+.btn-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Confirm cancel dialog ── */
+.confirm-cancel {
+  display: none;
+  background: var(--red-lt);
+  border: 1.5px solid #fecaca;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 10px;
+}
+.confirm-cancel.visible { display: block; }
+.confirm-cancel p {
+  font-size: 13px; color: var(--red);
+  margin-bottom: 12px; line-height: 1.5;
+}
+.confirm-btns { display: flex; gap: 8px; }
+.btn-confirm-cancel {
+  flex: 1; padding: 10px;
+  background: var(--red); color: #fff;
+  border: none; border-radius: 8px;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.btn-keep {
+  flex: 1; padding: 10px;
+  background: #fff; color: var(--mid);
+  border: 1.5px solid var(--divider); border-radius: 8px;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Success / Error states ── */
+.state-card {
+  text-align: center;
+  padding: 40px 20px;
+}
+.state-icon {
+  font-size: 48px; margin-bottom: 16px;
+}
+.state-title {
+  font-size: 20px; font-weight: 700;
+  color: var(--navy); margin-bottom: 8px;
+}
+.state-sub {
+  font-size: 14px; color: var(--mid);
+  line-height: 1.6; margin-bottom: 24px;
+}
+.btn-book-again {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dk) 100%);
+  color: #fff; padding: 12px 28px;
+  border-radius: 12px; text-decoration: none;
+  font-size: 14px; font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,171,230,0.25);
+}
+
+/* ── Past meeting notice ── */
+.past-notice {
+  background: #fef9c3;
+  border: 1.5px solid #fde68a;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px; color: #92400e;
+  margin-bottom: 20px;
+  display: none;
+}
+.past-notice.visible { display: block; }
+
+/* ── Responsive ── */
+@media (min-width: 768px) {
+  .page { flex-direction: row; }
+  .left {
+    width: 340px; min-height: 100vh;
+    padding: 48px 40px;
+    flex-shrink: 0;
+  }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Left panel -->
+  <div class="left">
+    <div class="left-logo">
+      <picture>
+        <source srcset="https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-white.svg" type="image/svg+xml">
+        <source srcset="https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-white.webp" type="image/webp">
+        <img src="https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-white.webp"
+             alt="Adviser CRM"
+             onerror="this.parentElement.parentElement.querySelector('.left-logo-fallback').style.display='block';this.parentElement.style.display='none';">
+      </picture>
+      <div class="left-logo-fallback" style="display:none;">Adviser CRM</div>
+    </div>
+    <div class="left-heading">Manage your booking</div>
+    <div class="left-sub">Reschedule or cancel your upcoming meeting with the Adviser CRM team.</div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right">
+    <div class="manage-card" id="manage-card">
+
+      <!-- Loading state -->
+      <div class="loading" id="state-loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading your booking…</div>
+      </div>
+
+      <!-- Booking details -->
+      <div id="state-booking" style="display:none;">
+        <div class="booking-header">
+          <div class="booking-icon">📅</div>
+          <div class="booking-title" id="booking-topic">—</div>
+          <div class="booking-ref" id="booking-ref">—</div>
+        </div>
+
+        <div class="past-notice" id="past-notice">
+          ⚠️ This meeting has already taken place and cannot be rescheduled or cancelled.
+        </div>
+
+        <div class="detail-table">
+          <div class="detail-row">
+            <span class="detail-label">Date & Time</span>
+            <span class="detail-value" id="booking-time">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Duration</span>
+            <span class="detail-value" id="booking-duration">—</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Zoom Join Link</span>
+            <span class="detail-value"><a id="booking-join" href="#" target="_blank" style="color:var(--blue);">Open Zoom</a></span>
+          </div>
+        </div>
+
+        <div class="actions" id="actions">
+          <button class="btn-reschedule" onclick="handleReschedule()">
+            📅 Reschedule Meeting
+          </button>
+          <button class="btn-cancel" onclick="showCancelConfirm()">
+            Cancel Booking
+          </button>
+          <div class="confirm-cancel" id="confirm-cancel">
+            <p>Are you sure you want to cancel this booking? This will remove the Zoom meeting and cannot be undone.</p>
+            <div class="confirm-btns">
+              <button class="btn-confirm-cancel" onclick="handleCancel()">Yes, Cancel It</button>
+              <button class="btn-keep" onclick="hideCancelConfirm()">Keep Booking</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cancelled success -->
+      <div id="state-cancelled" style="display:none;">
+        <div class="state-card">
+          <div class="state-icon">✅</div>
+          <div class="state-title">Booking Cancelled</div>
+          <div class="state-sub">Your booking has been cancelled and the Zoom meeting has been removed. A confirmation has been sent to your email.</div>
+          <a href="https://calendar.advisercrm.co.nz" class="btn-book-again">Book a New Meeting</a>
+        </div>
+      </div>
+
+      <!-- Error state -->
+      <div id="state-error" style="display:none;">
+        <div class="state-card">
+          <div class="state-icon">⚠️</div>
+          <div class="state-title" id="error-title">Booking Not Found</div>
+          <div class="state-sub" id="error-sub">This booking link may have expired or already been used. Please contact us if you need assistance.</div>
+          <a href="https://calendar.advisercrm.co.nz" class="btn-book-again">Book a New Meeting</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+var MANAGE_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/manage';
+var bookingData = null;
+var manageToken = null;
+
+function getParam(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+function showState(id) {
+  ['state-loading','state-booking','state-cancelled','state-error'].forEach(function(s) {
+    document.getElementById(s).style.display = s === id ? 'block' : 'none';
+  });
+}
+
+function showError(title, sub) {
+  document.getElementById('error-title').textContent = title || 'Something went wrong';
+  document.getElementById('error-sub').textContent   = sub   || 'Please contact us directly.';
+  showState('state-error');
+}
+
+// ── Load booking on page load ──────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  manageToken = getParam('token');
+  var action  = getParam('action');
+
+  if (!manageToken) {
+    showError('Invalid Link', 'This booking link is invalid. Please check your confirmation email and try again.');
+    return;
+  }
+
+  // If action=cancel in URL, go straight to cancel after loading
+  fetch(MANAGE_ENDPOINT + '?token=' + encodeURIComponent(manageToken))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showError('Booking Not Found', data.error);
+        return;
+      }
+
+      bookingData = data;
+
+      // Populate details
+      document.getElementById('booking-topic').textContent    = data.topic || '—';
+      document.getElementById('booking-ref').textContent      = 'Ref: ' + (data.ref || '—');
+      document.getElementById('booking-time').textContent     = data.startNZ || '—';
+      document.getElementById('booking-duration').textContent = (data.duration || '—') + ' minutes';
+      document.getElementById('booking-join').href            = data.joinUrl || '#';
+
+      // Show past notice if needed
+      if (data.isPast) {
+        document.getElementById('past-notice').classList.add('visible');
+        document.getElementById('actions').style.display = 'none';
+      }
+
+      showState('state-booking');
+
+      // Auto-trigger cancel if action=cancel in URL
+      if (action === 'cancel' && !data.isPast) {
+        showCancelConfirm();
+      }
+    })
+    .catch(function() {
+      showError('Could Not Load Booking', 'Please check your internet connection and try again.');
+    });
+});
+
+// ── Reschedule ────────────────────────────────────────────────
+function handleReschedule() {
+  if (!bookingData) return;
+  // Redirect to booking page with a flag to indicate reschedule
+  // The old slot will be freed up once the new booking is confirmed
+  window.location.href = 'https://calendar.advisercrm.co.nz?reschedule=' + encodeURIComponent(manageToken);
+}
+
+// ── Cancel ────────────────────────────────────────────────────
+function showCancelConfirm() {
+  document.getElementById('confirm-cancel').classList.add('visible');
+}
+
+function hideCancelConfirm() {
+  document.getElementById('confirm-cancel').classList.remove('visible');
+}
+
+function handleCancel() {
+  if (!manageToken) return;
+  var btn = document.querySelector('.btn-confirm-cancel');
+  btn.disabled    = true;
+  btn.textContent = 'Cancelling…';
+
+  fetch(MANAGE_ENDPOINT + '?token=' + encodeURIComponent(manageToken) + '&action=cancel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showError('Could Not Cancel', data.error);
+        return;
+      }
+      showState('state-cancelled');
+    })
+    .catch(function() {
+      btn.disabled    = false;
+      btn.textContent = 'Yes, Cancel It';
+      showError('Could Not Cancel', 'Please try again or contact us directly.');
+    });
+}
+</script>
+</body>
+</html>
