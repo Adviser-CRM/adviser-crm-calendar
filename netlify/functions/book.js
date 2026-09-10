@@ -317,13 +317,15 @@ async function sendEmail({ to, subject, html }) {
 // ── Email templates ───────────────────────────────────────────────
 function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoomId, zoomPassword, ref }) {
   const logoUrl = 'https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-email.png';
+  // Text logo fallback — always visible in email clients
+  const logoHtml = '<span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">ADVISER</span><span style="font-size:22px;font-weight:300;color:#00ABE6;letter-spacing:-0.5px;"> CRM</span>';
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">' +
   '<div style="max-width:600px;margin:0 auto;padding:24px 16px;">' +
 
     // Header
     '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:32px 32px 28px;text-align:center;">' +
       '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:20px;">' +
-        '<img src="' + logoUrl + '" alt="Adviser CRM" height="36" style="height:36px;border:0;display:inline-block;" />' +
+        '<div style="margin-bottom:4px;">' + logoHtml + '</div>' +
       '</td></tr></table>' +
       '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:12px;">' +
         '<span style="display:inline-block;background:rgba(255,255,255,0.18);border-radius:20px;padding:6px 18px;color:#fff;font-size:13px;font-weight:600;">&#10003; Meeting Confirmed</span>' +
@@ -366,6 +368,8 @@ function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoom
 
 function adviserEmailHtml({ clientName, client, mt, dateLabel, zoomStartUrl, zoomJoinUrl, zoomId, ref }) {
   const logoUrl = 'https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-email.png';
+  // Text logo fallback — always visible in email clients
+  const logoHtml = '<span style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">ADVISER</span><span style="font-size:22px;font-weight:300;color:#00ABE6;letter-spacing:-0.5px;"> CRM</span>';
   const notesRow = client.notes
     ? '<tr><td style="padding:8px 0;border-bottom:1px solid #e8edf2;"><span style="color:#5a7080;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Notes</span></td><td style="padding:8px 0;border-bottom:1px solid #e8edf2;text-align:right;color:#1a2b3c;">' + client.notes + '</td></tr>'
     : '';
@@ -376,7 +380,7 @@ function adviserEmailHtml({ clientName, client, mt, dateLabel, zoomStartUrl, zoo
     // Header
     '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">' +
       '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:16px;">' +
-        '<img src="' + logoUrl + '" alt="Adviser CRM" height="34" style="height:34px;border:0;display:inline-block;" />' +
+        '<div style="margin-bottom:4px;">' + logoHtml + '</div>' +
       '</td></tr></table>' +
       '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:10px;">' +
         '<span style="display:inline-block;background:rgba(0,171,230,0.25);border-radius:8px;padding:6px 16px;color:#00ABE6;font-size:12px;font-weight:700;letter-spacing:0.08em;">NEW BOOKING</span>' +
