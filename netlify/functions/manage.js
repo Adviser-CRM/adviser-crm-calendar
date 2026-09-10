@@ -73,15 +73,39 @@ exports.handler = async function(event) {
       const res = await fetch('https://api.zoom.us/v2/meetings/' + zoomId, {
         headers: { Authorization: 'Bearer ' + zoomToken },
       });
+      const text = await res.text();
+      console.log('[ACRM] Zoom lookup status:', res.status, text.substring(0, 200));
       if (res.ok) {
-        meetingDetails = await res.json();
+        meetingDetails = JSON.parse(text);
+      } else {
+        // Meeting might not exist or already cancelled
+        console.log('[ACRM] Zoom meeting not found:', zoomId);
       }
     } catch(e) {
       console.log('[ACRM] Zoom lookup error:', e.message);
     }
 
+    // If Zoom meeting not found, still show booking details from token
+    // (meeting may have been manually deleted)
     if (!meetingDetails) {
-      return { statusCode: 200, headers, body: JSON.stringify({ error: 'Booking not found. It may have already been cancelled.' }) };
+      // Return basic info from token so user can at least see their booking
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success:       true,
+          ref:           ref,
+          zoomId:        zoomId,
+          topic:         'Your Meeting',
+          startTime:     startDateTime,
+          startNZ:       formatDateTime(startDateTime),
+          duration:      60,
+          joinUrl:       null,
+          isPast:        isPast,
+          token:         token,
+          zoomNotFound:  true,
+        }),
+      };
     }
 
     // ── Handle cancel ─────────────────────────────────────────────
