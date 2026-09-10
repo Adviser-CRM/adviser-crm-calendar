@@ -315,6 +315,30 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
   color: var(--muted); font-size: 13px; line-height: 1.6;
 }
 .slots-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+
+/* Skeleton loading */
+.skeleton-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; width: 100%;
+  grid-column: 1/-1;
+}
+.skeleton-slot {
+  height: 58px; border-radius: 10px;
+  background: linear-gradient(90deg, #f0f4f8 25%, #e2e8f0 50%, #f0f4f8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-slot:nth-child(2) { animation-delay: 0.1s; }
+.skeleton-slot:nth-child(3) { animation-delay: 0.2s; }
+.skeleton-slot:nth-child(4) { animation-delay: 0.3s; }
+.skeleton-slot:nth-child(5) { animation-delay: 0.4s; }
+.skeleton-slot:nth-child(6) { animation-delay: 0.5s; }
+.skeleton-slot:nth-child(7) { animation-delay: 0.6s; }
+.skeleton-slot:nth-child(8) { animation-delay: 0.7s; }
 .slots-placeholder {
   text-align: center; padding: 40px 16px;
   color: var(--ink-mid); font-size: 14px; font-weight: 500;
@@ -1015,10 +1039,13 @@ function goToStep(n) {
     var saEl = document.getElementById('slots-adviser-label');
     var sdEl = document.getElementById('slots-date');
     if (saEl) saEl.textContent = state.meetingType.name + ' · ' + state.meetingType.duration + ' min per slot';
-    // If a date was previously selected, update it
     if (state.selectedDate) {
       if (sdEl) sdEl.textContent = state.selectedDate.toLocaleDateString('en-NZ', { weekday:'long', day:'numeric', month:'long' });
     }
+    // Re-render slots if date already selected (updates for new meeting type)
+    if (state.selectedDate) renderSlots();
+    // Update confirm bar if slot already selected
+    updateConfirmBar();
   }
 
   // Show adviser badge after step 1
@@ -1350,11 +1377,13 @@ function selectDate(y, m, d) {
     return;
   }
 
-  // Show loading spinner
+  // Show skeleton loading cards
   if (slotList) {
-    slotList.innerHTML = '<div class="slots-placeholder">' +
-      '<div class="slots-placeholder-icon" style="font-size:28px;animation:spin 1s linear infinite;">⟳</div>' +
-      '<div>Checking availability...</div></div>';
+    var skeletons = '';
+    for (var sk = 0; sk < 8; sk++) {
+      skeletons += '<div class="skeleton-slot"></div>';
+    }
+    slotList.innerHTML = '<div class="skeleton-grid">' + skeletons + '</div>';
   }
 
   // Fetch availability from Zoho
@@ -1449,16 +1478,19 @@ function selectSlot(key, label) {
   document.querySelectorAll('.slot-btn').forEach(function(b) { b.classList.remove('selected'); });
   var btn = document.querySelector('[data-slot="' + key + '"]');
   if (btn) btn.classList.add('selected');
-  var btn2 = document.getElementById('btn-next-2');
-  if (btn2) btn2.disabled = false;
+  document.getElementById('btn-next-2').disabled = false;
+  updateConfirmBar();
+}
 
+function updateConfirmBar() {
   var bar  = document.getElementById('slot-confirm-bar');
   var text = document.getElementById('slot-confirm-text');
-  if (bar) bar.classList.add('visible');
+  if (!bar || !state.selectedSlot || !state.selectedDate) return;
+  bar.classList.add('visible');
   if (text) {
     var d  = state.selectedDate;
     var ds = d.toLocaleDateString('en-NZ', { weekday:'short', day:'numeric', month:'short' });
-    text.textContent = ds + ' at ' + label + ' — ready to continue';
+    text.textContent = ds + ' at ' + state.selectedSlotLabel + ' — ready to continue';
   }
 }
 
