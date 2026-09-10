@@ -266,12 +266,10 @@ async function getClientDetailsFromZoho(token, ref) {
     console.log('[ACRM] Found Zoho event for ref:', ref);
 
     // Parse client details from description
-    // Format: "Client: First Last
-Email:  email
-Phone:  phone"
-    const clientMatch = desc.match(/Client:\s*(.+)/);
-    const emailMatch  = desc.match(/Email:\s*(.+)/);
-    const phoneMatch  = desc.match(/Phone:\s*(.+)/);
+    // Parse client details from description (Client/Email/Phone lines)
+    const clientMatch = desc.match(/Client:[\s]*([^\n]+)/);
+    const emailMatch  = desc.match(/Email:[\s]*([^\n]+)/);
+    const phoneMatch  = desc.match(/Phone:[\s]*([^\n]+)/);
 
     const fullName  = clientMatch ? clientMatch[1].trim() : '';
     const nameParts = fullName.split(' ');
