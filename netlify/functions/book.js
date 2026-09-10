@@ -33,7 +33,7 @@ const MEETING_TYPES = {
 
 const ADVISERS = {
   'adviser_a': { email: process.env.ADVISER_A_EMAIL || 'seand@advisercrm.co.nz',   name: 'Sean Davis' },
-  'adviser_b': { email: process.env.ADVISER_B_EMAIL || 'kyra@advisercrm.co.nz',    name: 'Kyra Santulio' },
+  'adviser_b': { email: process.env.ADVISER_B_EMAIL || 'dennis@advisercrm.co.nz',  name: 'Dennis' },
 };
 
 // ── CORS headers ──────────────────────────────────────────────────
@@ -281,7 +281,7 @@ async function createZohoEvent(token, eventData) {
 function getZohoOwnerId(adviserId) {
   const ids = {
     adviser_a: process.env.ZOHO_OWNER_A || '1484359000000083003',
-    adviser_b: process.env.ZOHO_OWNER_B || '1484359000177588001',
+    adviser_b: process.env.ZOHO_OWNER_B || '1484359000123904001',
   };
   return ids[adviserId] || ids.adviser_a;
 }

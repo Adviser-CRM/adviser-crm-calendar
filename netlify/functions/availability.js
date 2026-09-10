@@ -16,8 +16,9 @@ const ALLOWED_ORIGINS = [
 
 const ZOHO_OWNER_IDS = {
   adviser_a: process.env.ZOHO_OWNER_A || '1484359000000083003',
-  adviser_b: process.env.ZOHO_OWNER_B || '1484359000177588001',
+  adviser_b: process.env.ZOHO_OWNER_B || '1484359000123904001',
 };
+// Note: Update ZOHO_OWNER_B in Netlify env vars to Dennis's Zoho user ID
 
 // ── CORS headers ──────────────────────────────────────────────────
 function corsHeaders(origin) {
@@ -55,9 +56,9 @@ exports.handler = async function(event) {
     const ownerId = ZOHO_OWNER_IDS[adviserId];
 
     // Build start/end of day in NZ time (UTC+12 or UTC+13)
-    // Use UTC+12 as safe default (NZST)
+    // Use broad range to catch events in both NZST (+12) and NZDT (+13)
     const startOfDay = date + 'T00:00:00+12:00';
-    const endOfDay   = date + 'T23:59:59+12:00';
+    const endOfDay   = date + 'T23:59:59+13:00';
 
     // Get Zoho token
     const token = await getZohoToken();
