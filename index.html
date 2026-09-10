@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Book a Meeting — Adviser CRM</title>
+<link rel="icon" type="image/x-icon" href="./favicon.ico">
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="shortcut icon" href="./favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1005,6 +1008,17 @@ function goToStep(n) {
     if (rIcon) rIcon.textContent = state.meetingType.icon;
     if (rName) rName.textContent = state.meetingType.name;
     if (rDur)  rDur.textContent  = state.meetingType.duration + ' min';
+  }
+
+  // Update slots panel header immediately when entering step 2
+  if (n === 2 && state.meetingType) {
+    var saEl = document.getElementById('slots-adviser-label');
+    var sdEl = document.getElementById('slots-date');
+    if (saEl) saEl.textContent = state.meetingType.name + ' · ' + state.meetingType.duration + ' min per slot';
+    // If a date was previously selected, update it
+    if (state.selectedDate) {
+      if (sdEl) sdEl.textContent = state.selectedDate.toLocaleDateString('en-NZ', { weekday:'long', day:'numeric', month:'long' });
+    }
   }
 
   // Show adviser badge after step 1
