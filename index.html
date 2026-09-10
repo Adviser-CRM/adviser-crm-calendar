@@ -883,6 +883,13 @@ window.closeModalDirect = function() {};
 function selectMeeting(id) {
   var mt = MEETING_TYPES.find(function(m) { return m.id === id; });
   if (!mt) return;
+
+  // If adviser changed, clear availability cache so it reloads for new adviser
+  if (!state.meetingType || state.meetingType.adviser !== mt.adviser) {
+    state.busySlots = {};
+    console.log('[ACRM] Adviser changed — clearing availability cache');
+  }
+
   state.meetingType = mt;
   state.adviser     = ADVISERS[mt.adviser];
   state.selectedDate = null;
@@ -1264,12 +1271,9 @@ function fetchAvailability(dateKey) {
     return;
   }
 
-  // Find which adviser key this is
-  var adviserKey = 'adviser_a';
-  var advKeys = Object.keys(ADVISERS);
-  for (var k = 0; k < advKeys.length; k++) {
-    if (ADVISERS[advKeys[k]] === state.adviser) { adviserKey = advKeys[k]; break; }
-  }
+  // Get adviser key directly from the meeting type
+  var adviserKey = state.meetingType ? state.meetingType.adviser : 'adviser_a';
+  console.log('[ACRM] Checking availability for:', adviserKey, 'on', dateKey);
   fetch(AVAILABILITY_ENDPOINT + '?adviserId=' + adviserKey + '&date=' + dateKey)
     .then(function(r) { return r.json(); })
     .then(function(data) {
