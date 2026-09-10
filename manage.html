@@ -412,9 +412,33 @@ window.addEventListener('DOMContentLoaded', function() {
 // ── Reschedule ────────────────────────────────────────────────
 function handleReschedule() {
   if (!bookingData) return;
-  // Redirect to booking page with a flag to indicate reschedule
-  // The old slot will be freed up once the new booking is confirmed
-  window.location.href = 'https://calendar.advisercrm.co.nz?reschedule=' + encodeURIComponent(manageToken);
+
+  var btn = document.querySelector('.btn-reschedule');
+  btn.disabled    = true;
+  btn.textContent = 'Cancelling original booking…';
+
+  // Cancel the original meeting first
+  fetch(MANAGE_ENDPOINT + '?token=' + encodeURIComponent(manageToken) + '&action=reschedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        btn.disabled    = false;
+        btn.textContent = '📅 Reschedule Meeting';
+        alert('Could not cancel original booking: ' + data.error);
+        return;
+      }
+      // Original cancelled — redirect to booking page
+      // Pass ref so booking page knows this is a reschedule
+      window.location.href = 'https://calendar.advisercrm.co.nz?rescheduled=' + encodeURIComponent(bookingData.ref || '');
+    })
+    .catch(function() {
+      btn.disabled    = false;
+      btn.textContent = '📅 Reschedule Meeting';
+      alert('Something went wrong. Please try again.');
+    });
 }
 
 // ── Cancel ────────────────────────────────────────────────────

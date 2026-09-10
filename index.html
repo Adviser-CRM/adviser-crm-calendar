@@ -548,6 +548,16 @@ textarea.form-input { resize: vertical; min-height: 90px; }
   .step-panel { animation: none; }
   .btn-primary:hover, .meeting-card:hover { transform: none; }
 }
+    /* Reschedule banner */
+    .reschedule-banner {
+      display: none;
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: #fff; padding: 12px 20px;
+      border-radius: 12px; margin-bottom: 20px;
+      font-size: 13px; font-weight: 600;
+      align-items: center; gap: 10px;
+    }
+    .reschedule-banner.visible { display: flex; }
 </style>
 </head>
 <body>
@@ -610,6 +620,11 @@ textarea.form-input { resize: vertical; min-height: 90px; }
 
   <!-- ── Right Panel ── -->
   <div class="right">
+
+    <!-- Reschedule banner -->
+    <div class="reschedule-banner" id="reschedule-banner">
+      ✅ Your original booking has been cancelled. Please select a new date and time.
+    </div>
 
     <!-- Step 1: Meeting type -->
     <div class="step-panel active" id="panel-1">
@@ -847,7 +862,7 @@ var ADVISERS = {
 var MEETING_TYPES = [
   {
     id:       'demo',
-    name:     'Adviser CRM Demo',
+    name:     'Product Demo',
     desc:     '60 min',
     sub:      'See Adviser CRM in action — a live walkthrough tailored to your business.',
     icon:     '🖥',
@@ -930,6 +945,13 @@ var MONTHLY_ENDPOINT      = 'https://adviser-crm-calendar.netlify.app/.netlify/f
 
 // ── Init ──────────────────────────────────────────────────────────
 function init() {
+  // Show reschedule banner if coming from manage page
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('rescheduled')) {
+    var banner = document.getElementById('reschedule-banner');
+    if (banner) banner.classList.add('visible');
+  }
+
   renderMeetingTypes();
   renderCalendar();
 }
@@ -960,28 +982,9 @@ function selectMeeting(id) {
 
   state.meetingType = mt;
   state.adviser     = ADVISERS[mt.adviser];
-  state.selectedDate      = null;
-  state.selectedSlot      = null;
+  state.selectedDate = null;
+  state.selectedSlot = null;
   state.selectedSlotLabel = null;
-
-  // Clear confirm bar and reset slots panel
-  var bar = document.getElementById('slot-confirm-bar');
-  if (bar) bar.classList.remove('visible');
-  var btn2 = document.getElementById('btn-next-2');
-  if (btn2) btn2.disabled = true;
-  var slotList = document.getElementById('slots-list');
-  var sdEl     = document.getElementById('slots-date');
-  var slEl     = document.getElementById('slots-section-label');
-  if (sdEl) sdEl.textContent = 'Select a date';
-  if (slEl) slEl.style.display = 'none';
-  if (slotList) slotList.innerHTML =
-    '<div class="slots-placeholder">' +
-    '<div class="slots-placeholder-card">' +
-    '<div class="slots-placeholder-icon-wrap">&#128197;</div>' +
-    '<p class="slots-placeholder-text">Select a date to see available times</p>' +
-    '<p class="slots-placeholder-sub">Choose any highlighted date on the calendar</p>' +
-    '<div class="slots-placeholder-arrow">&#8592; </div>' +
-    '</div></div>';
 
   // Highlight selected card
   document.querySelectorAll('.meeting-card').forEach(function(c) {

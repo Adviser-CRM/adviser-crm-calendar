@@ -108,6 +108,34 @@ exports.handler = async function(event) {
       };
     }
 
+    // ── Handle reschedule ────────────────────────────────────────
+    if (action === 'reschedule') {
+      // Cancel the original Zoom meeting
+      try {
+        await fetch('https://api.zoom.us/v2/meetings/' + zoomId, {
+          method:  'DELETE',
+          headers: { Authorization: 'Bearer ' + zoomToken },
+        });
+        console.log('[ACRM] Original Zoom meeting deleted for reschedule:', zoomId);
+      } catch(e) {
+        console.log('[ACRM] Zoom delete error on reschedule:', e.message);
+      }
+
+      // Update Zoho Event to show rescheduled
+      try {
+        const zohoToken2 = await getZohoToken();
+        await cancelZohoEvent(zohoToken2, ref, 'RESCHEDULED');
+      } catch(e) {
+        console.log('[ACRM] Zoho reschedule error:', e.message);
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, action: 'reschedule_ready', ref }),
+      };
+    }
+
     // ── Handle cancel ─────────────────────────────────────────────
     if (action === 'cancel') {
       // Delete Zoom meeting
@@ -207,7 +235,8 @@ async function getZohoToken() {
   return data.access_token;
 }
 
-async function cancelZohoEvent(token, ref) {
+async function cancelZohoEvent(token, ref, label) {
+  label = label || 'CANCELLED';
   // Search for the event by ref in description
   const criteria = encodeURIComponent('(Description:contains:' + ref + ')');
   const res = await fetch(
@@ -228,7 +257,7 @@ async function cancelZohoEvent(token, ref) {
     body: JSON.stringify({
       data: [{
         id:          eventId,
-        Event_Title: '[CANCELLED] ' + data.data[0].Event_Title,
+        Event_Title: '[' + label + '] ' + data.data[0].Event_Title,
       }]
     }),
   });
