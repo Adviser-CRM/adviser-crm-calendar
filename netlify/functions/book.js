@@ -151,6 +151,16 @@ exports.handler = async function(event, context) {
         'Host start URL:   ' + (zoomStartUrl || 'N/A'),
       ].filter(Boolean).join('\n');
 
+      // Map meeting type to Zoho CRM Event Type dropdown value
+      const ZOHO_TYPE_MAP = {
+        'demo':       'Adviser CRM Demo',
+        'support':    'Technical Support',
+        'training':   'Training',
+        'onboarding': 'New User Onboarding',
+        'change':     'Change Request',
+        'new':        'Customisation',
+      };
+
       // Build event data with CRM link
       const eventData = {
         Event_Title:    mt.name + ' — ' + clientName + ' (Online Booking)',
@@ -159,7 +169,7 @@ exports.handler = async function(event, context) {
         Owner:          { id: getZohoOwnerId(adviserId) },
         Venue:          zoomJoinUrl || 'Online — Zoom',
         Description:    description,
-        // Agenda field removed — notes added via linked Note record instead
+        Type:           ZOHO_TYPE_MAP[meetingType] || mt.name,
       };
 
       // Link to CRM record if found/created
