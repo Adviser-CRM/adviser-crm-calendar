@@ -226,6 +226,22 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 .cal-day.past { color: #d8e0ea; cursor: not-allowed; }
 .cal-day.empty { cursor: default; }
 
+/* Availability dots */
+.cal-day-inner { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.cal-dots { display: flex; gap: 2px; justify-content: center; }
+.cal-dot  { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.cal-dot-morning   { background: #00ABE6; }
+.cal-dot-afternoon { background: #f59e0b; }
+.cal-day.selected .cal-dot-morning   { background: rgba(255,255,255,0.9); }
+.cal-day.selected .cal-dot-afternoon { background: rgba(255,255,255,0.7); }
+.cal-key {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px; border-top: 1px solid var(--divider);
+  font-size: 11px; color: var(--mid); flex-wrap: wrap;
+}
+.cal-key-item { display: flex; align-items: center; gap: 5px; }
+.cal-key-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
 /* Legend */
 .cal-legend {
   display: flex; align-items: center; gap: 16px;
@@ -597,18 +613,18 @@ textarea.form-input { resize: vertical; min-height: 90px; }
             <button class="cal-nav-btn" id="cal-next" onclick="changeMonth(1)">›</button>
           </div>
           <div class="cal-grid" id="cal-grid"><!-- Rendered by JS --></div>
-          <div class="cal-legend">
-            <div class="cal-legend-item">
-              <div class="cal-legend-dot" style="background:var(--blue);"></div>
-              <span>Available</span>
+          <div class="cal-key">
+            <div class="cal-key-item">
+              <div class="cal-key-dot" style="background:#00ABE6;"></div>
+              <span>Morning available</span>
             </div>
-            <div class="cal-legend-item">
-              <div class="cal-legend-dot" style="background:#d8e0ea;"></div>
+            <div class="cal-key-item">
+              <div class="cal-key-dot" style="background:#f59e0b;"></div>
+              <span>Afternoon available</span>
+            </div>
+            <div class="cal-key-item">
+              <div class="cal-key-dot" style="background:#d8e0ea;"></div>
               <span>Unavailable</span>
-            </div>
-            <div class="cal-legend-item">
-              <div class="cal-legend-dot" style="background:transparent;border:1.5px solid var(--blue);"></div>
-              <span>Today</span>
             </div>
           </div>
         </div>
@@ -855,11 +871,14 @@ var state = {
   bookedSlots:  {}, // key: "YYYY-MM-DD-HH:MM" → true (mock booked)
   busySlots:    {}, // key: "YYYY-MM-DD" → ["HH:MM", ...] from Zoho
   loadingSlots: false,
+  monthlyData:  {}, // key: "adviser_a-2026-9" → busyByDay map
+  monthlyLoading: false,
 };
 
 // ── API Endpoints ─────────────────────────────────────────────────
 var BOOKING_ENDPOINT      = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/book';
 var AVAILABILITY_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/availability';
+var MONTHLY_ENDPOINT      = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/monthly';
 
 // ── Init ──────────────────────────────────────────────────────────
 function init() {
@@ -886,7 +905,8 @@ function selectMeeting(id) {
 
   // If adviser changed, clear availability cache so it reloads for new adviser
   if (!state.meetingType || state.meetingType.adviser !== mt.adviser) {
-    state.busySlots = {};
+    state.busySlots   = {};
+    state.monthlyData = {};
     console.log('[ACRM] Adviser changed — clearing availability cache');
   }
 
@@ -906,8 +926,39 @@ function selectMeeting(id) {
   // Enable Continue
   document.getElementById('btn-next-1').disabled = false;
 
-  // Re-render calendar with correct adviser availability
+  // Fetch monthly availability for this adviser
+  fetchMonthlyAvailability();
   renderCalendar();
+}
+
+function fetchMonthlyAvailability() {
+  if (!state.adviser || !MONTHLY_ENDPOINT) return;
+  var adviserKey = state.meetingType ? state.meetingType.adviser : 'adviser_a';
+  var y = state.calYear;
+  var m = state.calMonth + 1; // 1-based
+  var key = adviserKey + '-' + y + '-' + m;
+
+  // Already loaded
+  if (state.monthlyData[key] !== undefined) {
+    renderCalendar();
+    return;
+  }
+
+  // Mark as loading
+  state.monthlyData[key] = null;
+
+  fetch(MONTHLY_ENDPOINT + '?adviserId=' + adviserKey + '&year=' + y + '&month=' + m)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      state.monthlyData[key] = data.busyByDay || {};
+      console.log('[ACRM] Monthly data loaded for', key, Object.keys(state.monthlyData[key]).length, 'busy days');
+      renderCalendar();
+    })
+    .catch(function(err) {
+      console.log('[ACRM] Monthly fetch failed:', err);
+      state.monthlyData[key] = {};
+      renderCalendar();
+    });
 }
 
 // ── Step 3: Summary ────────────────────────────────────────────────
@@ -1165,6 +1216,8 @@ function changeMonth(dir) {
   state.selectedSlot = null;
   state.selectedSlotLabel = null;
   document.getElementById('btn-next-2').disabled = true;
+  // Fetch monthly availability for new month
+  if (state.meetingType) fetchMonthlyAvailability();
   var sdEl = document.getElementById('slots-date');
   var slEl = document.getElementById('slots-section-label');
   if (sdEl) sdEl.textContent = 'Select a date';
@@ -1223,7 +1276,36 @@ function renderCalendar() {
     if (isSel)        cls += ' selected';
 
     var onclick = isAvail ? 'onclick="selectDate(' + y + ',' + m + ',' + d + ')"' : '';
-    html += '<div class="' + cls + '" ' + onclick + '>' + d + '</div>';
+
+    // Build availability dots for this day
+    var dots = '';
+    if (isAvail) {
+      var dateStr   = y + '-' + pad(m+1) + '-' + pad(d);
+      var monthKey  = state.meetingType ? state.meetingType.adviser + '-' + y + '-' + (m+1) : '';
+      var monthData = monthKey ? state.monthlyData[monthKey] : null;
+      var busyDay   = monthData ? (monthData[dateStr] || []) : null;
+
+      if (busyDay !== null) {
+        // Work out if morning (09-11:30) and afternoon (12-16:30) have free slots
+        var morningSlots   = ['09:00','09:30','10:00','10:30','11:00','11:30'];
+        var afternoonSlots = ['12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'];
+        var morningFree    = morningSlots.some(function(s) { return busyDay.indexOf(s) === -1; });
+        var afternoonFree  = afternoonSlots.some(function(s) { return busyDay.indexOf(s) === -1; });
+        if (morningFree)   dots += '<span class="cal-dot cal-dot-morning"></span>';
+        if (afternoonFree) dots += '<span class="cal-dot cal-dot-afternoon"></span>';
+      } else {
+        // Data not loaded yet — show both dots as placeholder
+        dots += '<span class="cal-dot cal-dot-morning" style="opacity:0.3;"></span>';
+        dots += '<span class="cal-dot cal-dot-afternoon" style="opacity:0.3;"></span>';
+      }
+    }
+
+    html += '<div class="' + cls + '" ' + onclick + '>' +
+      '<div class="cal-day-inner">' +
+        '<span>' + d + '</span>' +
+        (dots ? '<div class="cal-dots">' + dots + '</div>' : '') +
+      '</div>' +
+    '</div>';
   }
   document.getElementById('cal-grid').innerHTML = html;
 }
