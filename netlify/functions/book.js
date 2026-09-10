@@ -322,15 +322,23 @@ function clientEmailHtml({ clientName, mt, adviser, dateLabel, zoomJoinUrl, zoom
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">' +
   '<div style="max-width:600px;margin:0 auto;padding:24px 16px;">' +
 
-    // Header
-    '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:32px 32px 28px;text-align:center;">' +
-      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:20px;">' +
-        '<div style="margin-bottom:4px;">' + logoHtml + '</div>' +
-      '</td></tr></table>' +
-      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:12px;">' +
-        '<span style="display:inline-block;background:rgba(255,255,255,0.18);border-radius:20px;padding:6px 18px;color:#fff;font-size:13px;font-weight:600;">&#10003; Meeting Confirmed</span>' +
-      '</td></tr></table>' +
-      '<h1 style="color:#fff;margin:0;font-size:22px;font-weight:700;line-height:1.3;">Your ' + mt.name + ' is booked!</h1>' +
+    // Header — two column layout
+    '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:22px 28px;">' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
+        // Left: logo + confirmed pill
+        '<td valign="middle" style="width:50%;">' +
+          logoHtml +
+          '<div style="margin-top:8px;display:inline-block;background:rgba(255,255,255,0.15);border-radius:20px;padding:4px 14px;">' +
+            '<span style="color:#fff;font-size:11px;font-weight:600;">&#10003; Meeting Confirmed</span>' +
+          '</div>' +
+        '</td>' +
+        // Right: meeting name + date
+        '<td valign="middle" style="width:50%;text-align:right;">' +
+          '<div style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">' + mt.name + '</div>' +
+          '<div style="color:#fff;font-size:16px;font-weight:700;line-height:1.3;">' + dateLabel + '</div>' +
+          '<div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:4px;">NZ Time</div>' +
+        '</td>' +
+      '</tr></table>' +
     '</div>' +
 
     // Body
@@ -377,16 +385,23 @@ function adviserEmailHtml({ clientName, client, mt, dateLabel, zoomStartUrl, zoo
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f4f7fa;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">' +
   '<div style="max-width:600px;margin:0 auto;padding:24px 16px;">' +
 
-    // Header
-    '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">' +
-      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:16px;">' +
-        '<div style="margin-bottom:4px;">' + logoHtml + '</div>' +
-      '</td></tr></table>' +
-      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:10px;">' +
-        '<span style="display:inline-block;background:rgba(0,171,230,0.25);border-radius:8px;padding:6px 16px;color:#00ABE6;font-size:12px;font-weight:700;letter-spacing:0.08em;">NEW BOOKING</span>' +
-      '</td></tr></table>' +
-      '<h1 style="color:#fff;margin:0 0 6px;font-size:20px;font-weight:700;">' + mt.name + '</h1>' +
-      '<p style="color:rgba(255,255,255,0.6);margin:0;font-size:13px;font-family:monospace;">Ref: ' + ref + '</p>' +
+    // Header — two column layout
+    '<div style="background:linear-gradient(135deg,#07385D 0%,#0a4f82 100%);border-radius:16px 16px 0 0;padding:22px 28px;">' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
+        // Left: logo + ref
+        '<td valign="middle" style="width:50%;">' +
+          logoHtml +
+          '<div style="margin-top:6px;color:rgba(255,255,255,0.45);font-size:11px;font-family:monospace;">' + ref + '</div>' +
+        '</td>' +
+        // Right: new booking badge + meeting type
+        '<td valign="middle" style="width:50%;text-align:right;">' +
+          '<div style="display:inline-block;background:rgba(0,171,230,0.25);border-radius:8px;padding:4px 12px;margin-bottom:6px;">' +
+            '<span style="color:#00ABE6;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">New Booking</span>' +
+          '</div>' +
+          '<div style="color:#fff;font-size:16px;font-weight:700;line-height:1.3;">' + mt.name + '</div>' +
+          '<div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:4px;">' + dateLabel + '</div>' +
+        '</td>' +
+      '</tr></table>' +
     '</div>' +
 
     // Body
