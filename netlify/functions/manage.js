@@ -210,18 +210,50 @@ exports.handler = async function(event) {
       if (firstName) {
         clientDetails = { firstName, lastName, email: '', phone: '' };
         console.log('[ACRM] Client name from Zoom topic:', firstName, lastName);
-      }
 
-      // Also try Zoho lookup for email and phone
-      try {
-        const zohoToken = await getZohoToken();
-        const zohoClient = await getClientDetailsFromZoho(zohoToken, ref);
-        if (zohoClient) {
-          clientDetails = zohoClient;
-          console.log('[ACRM] Full client details from Zoho:', clientDetails);
+        // Look up email and phone from Zoho CRM by name
+        try {
+          const zohoToken = await getZohoToken();
+
+          // Search Contacts by last name
+          const searchRes = await fetch(
+            'https://www.zohoapis.com/crm/v3/Contacts/search?criteria=' +
+            encodeURIComponent('(Last_Name:equals:' + lastName + ')') +
+            '&fields=First_Name,Last_Name,Email,Phone,Mobile',
+            { headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken } }
+          );
+          const searchData = await searchRes.json();
+
+          if (searchData.data && searchData.data.length) {
+            // Find best match by first name
+            const match = searchData.data.find(function(c) {
+              return c.First_Name && c.First_Name.toLowerCase() === firstName.toLowerCase();
+            }) || searchData.data[0];
+
+            clientDetails.email = match.Email || '';
+            clientDetails.phone = match.Phone || match.Mobile || '';
+            console.log('[ACRM] Found contact in Zoho:', clientDetails.email);
+          } else {
+            // Try Leads
+            const leadsRes = await fetch(
+              'https://www.zohoapis.com/crm/v3/Leads/search?criteria=' +
+              encodeURIComponent('(Last_Name:equals:' + lastName + ')') +
+              '&fields=First_Name,Last_Name,Email,Phone,Mobile',
+              { headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken } }
+            );
+            const leadsData = await leadsRes.json();
+            if (leadsData.data && leadsData.data.length) {
+              const match = leadsData.data.find(function(l) {
+                return l.First_Name && l.First_Name.toLowerCase() === firstName.toLowerCase();
+              }) || leadsData.data[0];
+              clientDetails.email = match.Email || '';
+              clientDetails.phone = match.Phone || match.Mobile || '';
+              console.log('[ACRM] Found lead in Zoho:', clientDetails.email);
+            }
+          }
+        } catch(ze) {
+          console.log('[ACRM] Zoho contact lookup failed:', ze.message);
         }
-      } catch(ze) {
-        console.log('[ACRM] Zoho lookup failed, using name from topic only');
       }
     } catch(e) {
       console.log('[ACRM] Could not extract client details:', e.message);
