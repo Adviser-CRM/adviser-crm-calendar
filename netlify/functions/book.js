@@ -265,23 +265,14 @@ exports.handler = async function(event, context) {
         const origZohoEventId2 = origZohoEventId;
         if (origZohoEventId2) {
           const zohoToken2 = await getZohoToken();
-          // First get the event title
-          const getRes = await fetch(
-            'https://www.zohoapis.com/crm/v3/Events/' + origZohoEventId2 + '?fields=Event_Title',
-            { headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2 } }
-          );
-          const getData = await getRes.json();
-          const origTitle = getData.data && getData.data[0] ? getData.data[0].Event_Title : 'Meeting';
-
-          // Mark as rescheduled
-          await fetch('https://www.zohoapis.com/crm/v3/Events', {
-            method:  'PUT',
-            headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: [{ id: origZohoEventId2, Event_Title: '[RESCHEDULED] ' + origTitle }] }),
+          // Delete the original Zoho Event completely
+          await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + origZohoEventId2, {
+            method:  'DELETE',
+            headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2 },
           });
-          console.log('[ACRM] Original Zoho event marked as rescheduled:', origZohoEventId2);
+          console.log('[ACRM] Original Zoho event deleted:', origZohoEventId2);
         } else {
-          console.log('[ACRM] No Zoho event ID in token — skipping Zoho update (id was:', origZohoEventId2, ')');
+          console.log('[ACRM] No Zoho event ID in token — skipping Zoho delete');
         }
       } catch(rescheduleErr) {
         console.log('[ACRM] Error cancelling original:', rescheduleErr.message);
