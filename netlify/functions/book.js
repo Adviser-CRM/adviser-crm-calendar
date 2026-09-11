@@ -119,6 +119,7 @@ exports.handler = async function(event, context) {
     }
 
     // ── Step 2: Find/create CRM record + Create Zoho Event ────────
+    let zohoEventId = null;
     try {
       const zohoToken = await getZohoToken();
 
@@ -185,7 +186,9 @@ exports.handler = async function(event, context) {
       }
 
       const eventResult = await createZohoEvent(zohoToken, eventData);
-      console.log('[ACRM] Zoho event created and linked');
+      zohoEventId = eventResult.data && eventResult.data[0] && eventResult.data[0].details
+        ? eventResult.data[0].details.id : null;
+      console.log('[ACRM] Zoho event created and linked, id:', zohoEventId);
 
       // Add client notes as a linked Note on the Event
       if (client.notes && client.notes.trim() && eventResult.data && eventResult.data[0]) {
@@ -201,7 +204,7 @@ exports.handler = async function(event, context) {
 
     // ── Step 3: Send emails ─────────────────────────────────────
     const dateLabel   = formatDateTime(evt.Start_DateTime);
-    const manageToken = generateManageToken(ref, zoomId, evt.Start_DateTime);
+    const manageToken = generateManageToken(ref, zoomId, evt.Start_DateTime, zohoEventId);
     const manageUrl   = 'https://calendar.advisercrm.co.nz/manage.html?token=' + manageToken;
 
     // Client email
@@ -238,43 +241,39 @@ exports.handler = async function(event, context) {
     console.log('[ACRM] originalToken received:', originalToken ? 'YES (' + originalToken.substring(0,20) + '...)' : 'NONE');
     if (originalToken) {
       try {
-        let origRef, origZoomId;
+        let origRef, origZoomId, origZohoEventId, parts;
         try {
           const decoded = Buffer.from(originalToken, 'base64url').toString('utf-8');
-          const parts   = decoded.split('|');
-          origRef    = parts[0];
-          origZoomId = parts[1];
-          console.log('[ACRM] Decoded original token - ref:', origRef, 'zoomId:', origZoomId);
+          parts          = decoded.split('|');
+          origRef        = parts[0];
+          origZoomId     = parts[1];
+          origZohoEventId = parts[3] || null;
+          console.log('[ACRM] Decoded original token - ref:', origRef, 'zoomId:', origZoomId, 'zohoEventId:', origZohoEventId);
         } catch(e) { console.log('[ACRM] Could not decode original token:', e.message); }
 
         if (origZoomId) {
           // Cancel original Zoom meeting
           const zoomToken2 = await getZoomToken();
-          await fetch('https://api.zoom.us/v2/meetings/' + origZoomId, {
+          const deleteRes = await fetch('https://api.zoom.us/v2/meetings/' + origZoomId, {
             method:  'DELETE',
             headers: { Authorization: 'Bearer ' + zoomToken2 },
           });
-          console.log('[ACRM] Original Zoom meeting cancelled:', origZoomId);
+          const deleteText = await deleteRes.text();
+          console.log('[ACRM] Zoom delete status:', deleteRes.status, deleteText || '(no body)');
         }
 
-        if (origRef) {
-          // Mark original Zoho Event as rescheduled
+        // Update original Zoho Event directly using stored event ID
+        const origZohoEventId2 = origZohoEventId;
+        if (origZohoEventId2) {
           const zohoToken2 = await getZohoToken();
-          const criteria   = encodeURIComponent('(Event_Title:contains:' + origRef + ')');
-          const searchRes  = await fetch(
-            'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria + '&fields=id,Event_Title',
-            { headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2 } }
-          );
-          const searchData = await searchRes.json();
-          if (searchData.data && searchData.data.length) {
-            const origEventId = searchData.data[0].id;
-            await fetch('https://www.zohoapis.com/crm/v3/Events', {
-              method:  'PUT',
-              headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ data: [{ id: origEventId, Event_Title: '[RESCHEDULED] ' + searchData.data[0].Event_Title }] }),
-            });
-            console.log('[ACRM] Original Zoho event marked as rescheduled:', origEventId);
-          }
+          // Delete the original Zoho Event completely
+          await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + origZohoEventId2, {
+            method:  'DELETE',
+            headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2 },
+          });
+          console.log('[ACRM] Original Zoho event deleted:', origZohoEventId2);
+        } else {
+          console.log('[ACRM] No Zoho event ID in token — skipping Zoho delete');
         }
       } catch(rescheduleErr) {
         console.log('[ACRM] Error cancelling original:', rescheduleErr.message);
@@ -625,9 +624,9 @@ function generateRef() {
   return 'ACR-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function generateManageToken(ref, zoomId, startDateTime) {
+function generateManageToken(ref, zoomId, startDateTime, zohoEventId) {
   // Encode booking details into a base64 token — no storage needed
-  const payload = [ref, String(zoomId || ''), startDateTime || ''].join('|');
+  const payload = [ref, String(zoomId || ''), startDateTime || '', String(zohoEventId || '')].join('|');
   return Buffer.from(payload).toString('base64url');
 }
 
