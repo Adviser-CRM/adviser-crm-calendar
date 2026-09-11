@@ -34,7 +34,12 @@ exports.handler = async function(event) {
   try {
     const params = event.queryStringParameters || {};
     const token  = params.token;
-    const action = params.action || event.httpMethod === 'POST' ? (JSON.parse(event.body || '{}').action || params.action) : null;
+    // Get action from URL params or POST body
+    let action = params.action || null;
+    if (!action && event.httpMethod === 'POST') {
+      try { action = JSON.parse(event.body || '{}').action || null; } catch(e) {}
+    }
+    console.log('[ACRM] Action:', action, 'Method:', event.httpMethod);
 
     if (!token) {
       return { statusCode: 200, headers, body: JSON.stringify({ error: 'Invalid booking link' }) };
