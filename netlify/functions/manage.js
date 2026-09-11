@@ -360,7 +360,10 @@ function formatDateTime(dateStr) {
   if (!dateStr) return '—';
   try {
     var str = dateStr;
-    if (!str.includes('+') && !str.includes('Z')) str = str + '+00:00';
+    // If no timezone info, treat as NZ time (+12:00)
+    if (!str.includes('+') && !str.includes('Z') && !str.includes('z')) {
+      str = str + '+12:00';
+    }
     return new Date(str).toLocaleString('en-NZ', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       hour: '2-digit', minute: '2-digit', hour12: true,
