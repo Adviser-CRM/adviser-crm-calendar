@@ -264,17 +264,31 @@ async function getZohoToken() {
 async function getClientDetailsFromZoho(token, ref) {
   // Search for the Zoho Event by ref and extract client details from description
   try {
-    const criteria = encodeURIComponent('(Description:contains:' + ref + ')');
-    const res = await fetch(
-      'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria +
+    // Search by Event_Title which contains the ref
+    const titleCriteria = encodeURIComponent('(Event_Title:contains:' + ref + ')');
+    let res = await fetch(
+      'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + titleCriteria +
       '&fields=id,Event_Title,Description,Who_Id',
       { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
     );
-    const data = await res.json();
+    let data = await res.json();
+
+    // Fallback: search by Description
+    if (!data.data || !data.data.length) {
+      const descCriteria = encodeURIComponent('(Description:contains:' + ref + ')');
+      res = await fetch(
+        'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + descCriteria +
+        '&fields=id,Event_Title,Description,Who_Id',
+        { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
+      );
+      data = await res.json();
+    }
+
+    console.log('[ACRM] Zoho search response:', JSON.stringify(data).substring(0, 200));
     if (!data.data || !data.data.length) return null;
 
     const desc = data.data[0].Description || '';
-    console.log('[ACRM] Found Zoho event for ref:', ref);
+    console.log('[ACRM] Found Zoho event for ref:', ref, 'desc length:', desc.length);
 
     // Parse client details from description
     // Parse client details from description (Client/Email/Phone lines)
