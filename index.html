@@ -623,7 +623,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
 
     <!-- Reschedule banner -->
     <div class="reschedule-banner" id="reschedule-banner">
-      ✅ Your original booking has been cancelled. Please select a new date and time.
+      📅 You are rescheduling. Please select a Meeting Type and a New Time. Your original meeting will be cancelled once the new one is confirmed.
     </div>
 
     <!-- Step 1: Meeting type -->
@@ -950,6 +950,16 @@ function init() {
   if (params.get('rescheduled')) {
     var banner = document.getElementById('reschedule-banner');
     if (banner) banner.classList.add('visible');
+
+    // Pre-fill client details and store original token
+    state.prefill = {
+      firstName: params.get('fn') || '',
+      lastName:  params.get('ln') || '',
+      email:     params.get('em') || '',
+      phone:     params.get('ph') || '',
+    };
+    state.originalToken  = params.get('originalToken') || '';
+    state.rescheduledRef = params.get('rescheduled')   || '';
   }
 
   renderMeetingTypes();
@@ -1047,7 +1057,21 @@ function updateStep3Summary() {
 }
 
 function goToStep(n) {
-  if (n === 3) updateStep3Summary();
+  if (n === 3) {
+    updateStep3Summary();
+    if (state.prefill) {
+      setTimeout(function() {
+        var fn = document.getElementById('input-firstname');
+        var ln = document.getElementById('input-lastname');
+        var em = document.getElementById('input-email');
+        var ph = document.getElementById('input-phone');
+        if (fn && state.prefill.firstName) fn.value = state.prefill.firstName;
+        if (ln && state.prefill.lastName)  ln.value = state.prefill.lastName;
+        if (em && state.prefill.email)     em.value = state.prefill.email;
+        if (ph && state.prefill.phone)     ph.value = state.prefill.phone;
+      }, 50);
+    }
+  }
 
   // Update panels
   document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active'); });

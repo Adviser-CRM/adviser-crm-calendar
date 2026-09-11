@@ -194,14 +194,37 @@ exports.handler = async function(event) {
     }
 
     // ── Default: return booking details + client info for display ──
-    // Fetch client details from Zoho Event for pre-filling on reschedule
+    // Extract client name from Zoom meeting topic
+    // Format: "Meeting Type — First Last (Online Booking)"
     let clientDetails = null;
     try {
-      const zohoToken = await getZohoToken();
-      clientDetails = await getClientDetailsFromZoho(zohoToken, ref);
-      console.log('[ACRM] Client details on load:', clientDetails);
+      const topic = meetingDetails.topic || '';
+      const namePart = topic
+        .replace(/^.*?—\s*/, '')           // remove "Meeting Type — "
+        .replace(/\s*\(Online Booking\).*$/, '') // remove " (Online Booking)"
+        .trim();
+      const nameParts = namePart.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName  = nameParts.slice(1).join(' ') || '';
+
+      if (firstName) {
+        clientDetails = { firstName, lastName, email: '', phone: '' };
+        console.log('[ACRM] Client name from Zoom topic:', firstName, lastName);
+      }
+
+      // Also try Zoho lookup for email and phone
+      try {
+        const zohoToken = await getZohoToken();
+        const zohoClient = await getClientDetailsFromZoho(zohoToken, ref);
+        if (zohoClient) {
+          clientDetails = zohoClient;
+          console.log('[ACRM] Full client details from Zoho:', clientDetails);
+        }
+      } catch(ze) {
+        console.log('[ACRM] Zoho lookup failed, using name from topic only');
+      }
     } catch(e) {
-      console.log('[ACRM] Could not fetch client details:', e.message);
+      console.log('[ACRM] Could not extract client details:', e.message);
     }
 
     return {

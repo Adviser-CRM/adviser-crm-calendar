@@ -417,39 +417,17 @@ window.addEventListener('DOMContentLoaded', function() {
 function handleReschedule() {
   if (!bookingData) return;
 
-  var btn = document.querySelector('.btn-reschedule');
-  btn.disabled    = true;
-  btn.textContent = 'Cancelling original booking…';
-
-  // Cancel the original meeting first
-  fetch(MANAGE_ENDPOINT + '?token=' + encodeURIComponent(manageToken) + '&action=reschedule', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.error) {
-        btn.disabled    = false;
-        btn.textContent = '📅 Reschedule Meeting';
-        alert('Could not cancel original booking: ' + data.error);
-        return;
-      }
-      // Original cancelled — redirect with full client details
-      var client = data.client || bookingData.client || {};
-      var urlParams = new URLSearchParams({
-        rescheduled: bookingData.ref || '',
-        fn: client.firstName || '',
-        ln: client.lastName  || '',
-        em: client.email     || '',
-        ph: client.phone     || '',
-      });
-      window.location.href = 'https://calendar.advisercrm.co.nz?' + urlParams.toString();
-    })
-    .catch(function() {
-      btn.disabled    = false;
-      btn.textContent = '📅 Reschedule Meeting';
-      alert('Something went wrong. Please try again.');
-    });
+  // Don't cancel original yet — wait until new booking is confirmed
+  var client = bookingData.client || {};
+  var urlParams = new URLSearchParams({
+    rescheduled:   bookingData.ref || '',
+    originalToken: manageToken     || '',
+    fn: client.firstName || '',
+    ln: client.lastName  || '',
+    em: client.email     || '',
+    ph: client.phone     || '',
+  });
+  window.location.href = 'https://calendar.advisercrm.co.nz?' + urlParams.toString();
 }
 
 // ── Cancel ────────────────────────────────────────────────────

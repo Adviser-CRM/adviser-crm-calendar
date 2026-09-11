@@ -64,7 +64,7 @@ exports.handler = async function(event, context) {
   try {
     // ── Parse + validate payload ────────────────────────────────
     const payload = JSON.parse(event.body || '{}');
-    const { meetingType, adviserId, event: evt, client } = payload;
+    const { meetingType, adviserId, event: evt, client, originalToken } = payload;
 
     // Validate required fields
     const errors = [];
@@ -232,6 +232,51 @@ exports.handler = async function(event, context) {
       console.log('[ACRM] Adviser email sent to:', adviser.email);
     } catch (emailErr) {
       console.error('[ACRM] Adviser email error:', emailErr.message);
+    }
+
+    // ── Cancel original if rescheduling ─────────────────────────
+    if (originalToken) {
+      try {
+        let origRef, origZoomId;
+        try {
+          const decoded = Buffer.from(originalToken, 'base64url').toString('utf-8');
+          const parts   = decoded.split('|');
+          origRef    = parts[0];
+          origZoomId = parts[1];
+        } catch(e) { console.log('[ACRM] Could not decode original token'); }
+
+        if (origZoomId) {
+          // Cancel original Zoom meeting
+          const zoomToken2 = await getZoomToken();
+          await fetch('https://api.zoom.us/v2/meetings/' + origZoomId, {
+            method:  'DELETE',
+            headers: { Authorization: 'Bearer ' + zoomToken2 },
+          });
+          console.log('[ACRM] Original Zoom meeting cancelled:', origZoomId);
+        }
+
+        if (origRef) {
+          // Mark original Zoho Event as rescheduled
+          const zohoToken2 = await getZohoToken();
+          const criteria   = encodeURIComponent('(Event_Title:contains:' + origRef + ')');
+          const searchRes  = await fetch(
+            'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria + '&fields=id,Event_Title',
+            { headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2 } }
+          );
+          const searchData = await searchRes.json();
+          if (searchData.data && searchData.data.length) {
+            const origEventId = searchData.data[0].id;
+            await fetch('https://www.zohoapis.com/crm/v3/Events', {
+              method:  'PUT',
+              headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data: [{ id: origEventId, Event_Title: '[RESCHEDULED] ' + searchData.data[0].Event_Title }] }),
+            });
+            console.log('[ACRM] Original Zoho event marked as rescheduled:', origEventId);
+          }
+        }
+      } catch(rescheduleErr) {
+        console.log('[ACRM] Error cancelling original:', rescheduleErr.message);
+      }
     }
 
     // ── Success ─────────────────────────────────────────────────
