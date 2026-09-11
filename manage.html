@@ -144,27 +144,36 @@ body {
 }
 
 /* ── Action buttons ── */
-.actions { display: flex; flex-direction: column; gap: 10px; }
+.actions { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+
 .btn-reschedule {
-  width: 100%; padding: 14px;
+  width: 100%; padding: 14px 20px;
   background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dk) 100%);
   color: #fff; border: none; border-radius: 12px;
-  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
   cursor: pointer; transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0,171,230,0.25);
+  box-shadow: 0 2px 10px rgba(0,171,230,0.2);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  letter-spacing: 0.01em;
 }
 .btn-reschedule:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0,171,230,0.35);
+  box-shadow: 0 6px 20px rgba(0,171,230,0.3);
 }
+.btn-reschedule:disabled { opacity: 0.6; transform: none; cursor: not-allowed; }
+
 .btn-cancel {
-  width: 100%; padding: 14px;
-  background: #fff; color: var(--red);
-  border: 1.5px solid #fecaca; border-radius: 12px;
-  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  width: 100%; padding: 13px 20px;
+  background: #fff; color: #6b7280;
+  border: 1.5px solid var(--divider); border-radius: 12px;
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
   cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-cancel:hover { background: var(--red-lt); border-color: var(--red); }
+.btn-cancel:hover {
+  border-color: var(--red); color: var(--red);
+  background: #fff5f5;
+}
 .btn-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Confirm cancel dialog ── */
@@ -303,10 +312,10 @@ body {
 
         <div class="actions" id="actions">
           <button class="btn-reschedule" onclick="handleReschedule()">
-            📅 Reschedule Meeting
+            <span>↗</span> Reschedule Meeting
           </button>
           <button class="btn-cancel" onclick="showCancelConfirm()">
-            Cancel Booking
+            <span>✕</span> Cancel this Booking
           </button>
           <div class="confirm-cancel" id="confirm-cancel">
             <p>Are you sure you want to cancel this booking? This will remove the Zoom meeting and cannot be undone.</p>

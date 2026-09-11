@@ -1117,7 +1117,7 @@ function goToStep(n) {
 
   // Show adviser badge after step 1
   var badge = document.getElementById('adviser-badge');
-  if (state.adviser && n > 1) {
+  if (false && state.adviser && n > 1) {
     badge.style.display = 'flex';
     document.getElementById('adviser-initials').textContent = '👤';
     document.getElementById('adviser-name').textContent = 'Our team';

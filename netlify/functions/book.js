@@ -22,7 +22,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 const MEETING_TYPES = {
-  demo:       { name: 'Product Demo',               duration: 60 },
+  demo:       { name: 'Adviser CRM Demo',           duration: 60 },
   support:    { name: 'Technical Support',           duration: 30 },
   onboarding: { name: 'New User Onboarding',         duration: 60 },
   training:   { name: 'Training',                    duration: 60 },
