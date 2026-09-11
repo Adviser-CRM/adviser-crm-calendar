@@ -235,6 +235,7 @@ exports.handler = async function(event, context) {
     }
 
     // ── Cancel original if rescheduling ─────────────────────────
+    console.log('[ACRM] originalToken received:', originalToken ? 'YES (' + originalToken.substring(0,20) + '...)' : 'NONE');
     if (originalToken) {
       try {
         let origRef, origZoomId;
@@ -243,7 +244,8 @@ exports.handler = async function(event, context) {
           const parts   = decoded.split('|');
           origRef    = parts[0];
           origZoomId = parts[1];
-        } catch(e) { console.log('[ACRM] Could not decode original token'); }
+          console.log('[ACRM] Decoded original token - ref:', origRef, 'zoomId:', origZoomId);
+        } catch(e) { console.log('[ACRM] Could not decode original token:', e.message); }
 
         if (origZoomId) {
           // Cancel original Zoom meeting

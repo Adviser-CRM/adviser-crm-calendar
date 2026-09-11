@@ -41,13 +41,15 @@ exports.handler = async function(event) {
     }
 
     // ── Decode token ──────────────────────────────────────────────
-    let ref, zoomId, startDateTime;
+    let ref, zoomId, startDateTime, zohoEventId;
     try {
       const decoded = Buffer.from(token, 'base64url').toString('utf-8');
       const parts   = decoded.split('|');
       ref           = parts[0];
       zoomId        = parts[1];
       startDateTime = parts[2];
+      zohoEventId   = parts[3] || null;
+      console.log('[ACRM] Token decoded - ref:', ref, 'zohoEventId:', zohoEventId);
     } catch(e) {
       return { statusCode: 200, headers, body: JSON.stringify({ error: 'Invalid booking token' }) };
     }
@@ -166,10 +168,20 @@ exports.handler = async function(event) {
         console.log('[ACRM] Zoom delete error:', e.message);
       }
 
-      // Update Zoho CRM Event status to cancelled
+      // Delete Zoho CRM Event directly using event ID from token
       try {
         const zohoToken = await getZohoToken();
-        await cancelZohoEvent(zohoToken, ref);
+        if (zohoEventId) {
+          // Direct delete using event ID
+          await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + zohoEventId, {
+            method:  'DELETE',
+            headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken },
+          });
+          console.log('[ACRM] Zoho event deleted:', zohoEventId);
+        } else {
+          // Fallback to search by ref
+          await cancelZohoEvent(zohoToken, ref);
+        }
       } catch(e) {
         console.log('[ACRM] Zoho cancel error:', e.message);
       }
