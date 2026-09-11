@@ -241,13 +241,14 @@ exports.handler = async function(event, context) {
     console.log('[ACRM] originalToken received:', originalToken ? 'YES (' + originalToken.substring(0,20) + '...)' : 'NONE');
     if (originalToken) {
       try {
-        let origRef, origZoomId;
+        let origRef, origZoomId, origZohoEventId, parts;
         try {
           const decoded = Buffer.from(originalToken, 'base64url').toString('utf-8');
-          const parts   = decoded.split('|');
-          origRef    = parts[0];
-          origZoomId = parts[1];
-          console.log('[ACRM] Decoded original token - ref:', origRef, 'zoomId:', origZoomId);
+          parts          = decoded.split('|');
+          origRef        = parts[0];
+          origZoomId     = parts[1];
+          origZohoEventId = parts[3] || null;
+          console.log('[ACRM] Decoded original token - ref:', origRef, 'zoomId:', origZoomId, 'zohoEventId:', origZohoEventId);
         } catch(e) { console.log('[ACRM] Could not decode original token:', e.message); }
 
         if (origZoomId) {
@@ -261,12 +262,12 @@ exports.handler = async function(event, context) {
         }
 
         // Update original Zoho Event directly using stored event ID
-        const origZohoEventId = parts[3] || null;
-        if (origZohoEventId) {
+        const origZohoEventId2 = origZohoEventId;
+        if (origZohoEventId2) {
           const zohoToken2 = await getZohoToken();
           // First get the event title
           const getRes = await fetch(
-            'https://www.zohoapis.com/crm/v3/Events/' + origZohoEventId + '?fields=Event_Title',
+            'https://www.zohoapis.com/crm/v3/Events/' + origZohoEventId2 + '?fields=Event_Title',
             { headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2 } }
           );
           const getData = await getRes.json();
@@ -276,11 +277,11 @@ exports.handler = async function(event, context) {
           await fetch('https://www.zohoapis.com/crm/v3/Events', {
             method:  'PUT',
             headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken2, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: [{ id: origZohoEventId, Event_Title: '[RESCHEDULED] ' + origTitle }] }),
+            body: JSON.stringify({ data: [{ id: origZohoEventId2, Event_Title: '[RESCHEDULED] ' + origTitle }] }),
           });
-          console.log('[ACRM] Original Zoho event marked as rescheduled:', origZohoEventId);
+          console.log('[ACRM] Original Zoho event marked as rescheduled:', origZohoEventId2);
         } else {
-          console.log('[ACRM] No Zoho event ID in token — skipping Zoho update');
+          console.log('[ACRM] No Zoho event ID in token — skipping Zoho update (id was:', origZohoEventId2, ')');
         }
       } catch(rescheduleErr) {
         console.log('[ACRM] Error cancelling original:', rescheduleErr.message);
