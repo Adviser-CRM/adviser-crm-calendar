@@ -193,7 +193,17 @@ exports.handler = async function(event) {
       };
     }
 
-    // ── Default: return booking details for display ────────────────
+    // ── Default: return booking details + client info for display ──
+    // Fetch client details from Zoho Event for pre-filling on reschedule
+    let clientDetails = null;
+    try {
+      const zohoToken = await getZohoToken();
+      clientDetails = await getClientDetailsFromZoho(zohoToken, ref);
+      console.log('[ACRM] Client details on load:', clientDetails);
+    } catch(e) {
+      console.log('[ACRM] Could not fetch client details:', e.message);
+    }
+
     return {
       statusCode: 200,
       headers,
@@ -208,6 +218,7 @@ exports.handler = async function(event) {
         joinUrl:       meetingDetails.join_url,
         isPast:        isPast,
         token:         token,
+        client:        clientDetails,
       }),
     };
 

@@ -383,6 +383,10 @@ window.addEventListener('DOMContentLoaded', function() {
       }
 
       bookingData = data;
+      // Store client details for reschedule redirect
+      if (data.client) {
+        bookingData.client = data.client;
+      }
 
       // Populate details
       document.getElementById('booking-topic').textContent    = data.topic || '—';
@@ -430,8 +434,8 @@ function handleReschedule() {
         alert('Could not cancel original booking: ' + data.error);
         return;
       }
-      // Original cancelled — redirect with full client details from Zoho
-      var client = data.client || {};
+      // Original cancelled — redirect with full client details
+      var client = data.client || bookingData.client || {};
       var urlParams = new URLSearchParams({
         rescheduled: bookingData.ref || '',
         fn: client.firstName || '',
