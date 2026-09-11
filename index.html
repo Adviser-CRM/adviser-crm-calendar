@@ -1061,10 +1061,10 @@ function goToStep(n) {
     updateStep3Summary();
     if (state.prefill) {
       setTimeout(function() {
-        var fn = document.getElementById('input-firstname');
-        var ln = document.getElementById('input-lastname');
-        var em = document.getElementById('input-email');
-        var ph = document.getElementById('input-phone');
+        var fn = document.getElementById('f-firstname');
+        var ln = document.getElementById('f-lastname');
+        var em = document.getElementById('f-email');
+        var ph = document.getElementById('f-phone');
         if (fn && state.prefill.firstName) fn.value = state.prefill.firstName;
         if (ln && state.prefill.lastName)  ln.value = state.prefill.lastName;
         if (em && state.prefill.email)     em.value = state.prefill.email;
