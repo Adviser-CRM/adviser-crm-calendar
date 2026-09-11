@@ -18,6 +18,8 @@ function corsHeaders(origin) {
     'Access-Control-Allow-Origin':  allowed,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Cache-Control':                'no-store, no-cache, must-revalidate',
+    'Pragma':                       'no-cache',
   };
 }
 
