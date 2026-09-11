@@ -254,11 +254,12 @@ exports.handler = async function(event, context) {
         if (origZoomId) {
           // Cancel original Zoom meeting
           const zoomToken2 = await getZoomToken();
-          await fetch('https://api.zoom.us/v2/meetings/' + origZoomId, {
+          const deleteRes = await fetch('https://api.zoom.us/v2/meetings/' + origZoomId, {
             method:  'DELETE',
             headers: { Authorization: 'Bearer ' + zoomToken2 },
           });
-          console.log('[ACRM] Original Zoom meeting cancelled:', origZoomId);
+          const deleteText = await deleteRes.text();
+          console.log('[ACRM] Zoom delete status:', deleteRes.status, deleteText || '(no body)');
         }
 
         // Update original Zoho Event directly using stored event ID
