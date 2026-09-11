@@ -604,7 +604,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
       </div>
     </div>
 
-    <div class="adviser-badge" id="adviser-badge" style="display:none;">
+    <div class="adviser-badge" id="adviser-badge" style="display:none !important;">
       <div class="adviser-avatar" id="adviser-initials">SD</div>
       <div>
         <div class="adviser-name" id="adviser-name">Sean Davis</div>
@@ -1215,6 +1215,9 @@ function submitBooking() {
 
 
   function onSuccess(ref) {
+    // Hide reschedule banner on confirmation
+    var banner = document.getElementById('reschedule-banner');
+    if (banner) banner.classList.remove('visible');
     // Mark slot as booked
     state.bookedSlots[state.selectedSlot] = true;
 
@@ -1247,7 +1250,8 @@ function submitBooking() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        event:     eventPayload,
+        event:        eventPayload,
+        originalToken: state.originalToken || '',
         client:    { firstName:fname, lastName:lname, email:email, phone:phone, notes:notes },
         meetingType: mt.id,
         adviserId:   state.meetingType ? state.meetingType.adviser : 'adviser_a',
