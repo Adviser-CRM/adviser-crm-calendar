@@ -119,6 +119,7 @@ exports.handler = async function(event, context) {
     }
 
     // ── Step 2: Find/create CRM record + Create Zoho Event ────────
+    let zohoEventId = null;
     try {
       const zohoToken = await getZohoToken();
 
@@ -185,7 +186,7 @@ exports.handler = async function(event, context) {
       }
 
       const eventResult = await createZohoEvent(zohoToken, eventData);
-      const zohoEventId = eventResult.data && eventResult.data[0] && eventResult.data[0].details
+      zohoEventId = eventResult.data && eventResult.data[0] && eventResult.data[0].details
         ? eventResult.data[0].details.id : null;
       console.log('[ACRM] Zoho event created and linked, id:', zohoEventId);
 
