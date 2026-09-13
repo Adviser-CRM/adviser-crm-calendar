@@ -604,7 +604,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
       </div>
     </div>
 
-    <div class="adviser-badge" id="adviser-badge" style="display:none !important;">
+    <div class="adviser-badge" id="adviser-badge" style="display:none;">
       <div class="adviser-avatar" id="adviser-initials">SD</div>
       <div>
         <div class="adviser-name" id="adviser-name">Sean Davis</div>
@@ -613,7 +613,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
     </div>
 
     <div class="left-footer">
-      <div>© 2026 Adviser CRM</div>
+      <div>© 2026 Adviser CRM · All Rights Reserved</div>
       <div><a href="#">Privacy Policy</a> · <a href="#">Terms</a></div>
     </div>
   </div>
@@ -623,7 +623,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
 
     <!-- Reschedule banner -->
     <div class="reschedule-banner" id="reschedule-banner">
-      📅 You are rescheduling. Please select a Meeting Type and a New Time. Your original meeting will be cancelled once the new one is confirmed.
+      ✅ Your original booking has been cancelled. Please select a new date and time.
     </div>
 
     <!-- Step 1: Meeting type -->
@@ -862,7 +862,7 @@ var ADVISERS = {
 var MEETING_TYPES = [
   {
     id:       'demo',
-    name:     'Adviser CRM Demo',
+    name:     'Product Demo',
     desc:     '60 min',
     sub:      'See Adviser CRM in action — a live walkthrough tailored to your business.',
     icon:     '🖥',
@@ -950,16 +950,6 @@ function init() {
   if (params.get('rescheduled')) {
     var banner = document.getElementById('reschedule-banner');
     if (banner) banner.classList.add('visible');
-
-    // Pre-fill client details and store original token
-    state.prefill = {
-      firstName: params.get('fn') || '',
-      lastName:  params.get('ln') || '',
-      email:     params.get('em') || '',
-      phone:     params.get('ph') || '',
-    };
-    state.originalToken  = params.get('originalToken') || '';
-    state.rescheduledRef = params.get('rescheduled')   || '';
   }
 
   renderMeetingTypes();
@@ -1057,21 +1047,7 @@ function updateStep3Summary() {
 }
 
 function goToStep(n) {
-  if (n === 3) {
-    updateStep3Summary();
-    if (state.prefill) {
-      setTimeout(function() {
-        var fn = document.getElementById('f-firstname');
-        var ln = document.getElementById('f-lastname');
-        var em = document.getElementById('f-email');
-        var ph = document.getElementById('f-phone');
-        if (fn && state.prefill.firstName) fn.value = state.prefill.firstName;
-        if (ln && state.prefill.lastName)  ln.value = state.prefill.lastName;
-        if (em && state.prefill.email)     em.value = state.prefill.email;
-        if (ph && state.prefill.phone)     ph.value = state.prefill.phone;
-      }, 50);
-    }
-  }
+  if (n === 3) updateStep3Summary();
 
   // Update panels
   document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active'); });
@@ -1117,7 +1093,7 @@ function goToStep(n) {
 
   // Show adviser badge after step 1
   var badge = document.getElementById('adviser-badge');
-  if (false && state.adviser && n > 1) {
+  if (state.adviser && n > 1) {
     badge.style.display = 'flex';
     document.getElementById('adviser-initials').textContent = '👤';
     document.getElementById('adviser-name').textContent = 'Our team';
@@ -1215,9 +1191,6 @@ function submitBooking() {
 
 
   function onSuccess(ref) {
-    // Hide reschedule banner on confirmation
-    var banner = document.getElementById('reschedule-banner');
-    if (banner) banner.classList.remove('visible');
     // Mark slot as booked
     state.bookedSlots[state.selectedSlot] = true;
 
@@ -1250,8 +1223,7 @@ function submitBooking() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        event:        eventPayload,
-        originalToken: state.originalToken || '',
+        event:     eventPayload,
         client:    { firstName:fname, lastName:lname, email:email, phone:phone, notes:notes },
         meetingType: mt.id,
         adviserId:   state.meetingType ? state.meetingType.adviser : 'adviser_a',
