@@ -94,10 +94,30 @@ exports.handler = async function(event) {
       console.log('[ACRM] Zoom lookup error:', e.message);
     }
 
-    // If Zoom meeting not found, still show booking details from token
-    // (meeting may have been manually deleted)
+    // If Zoom meeting not found, still handle cancel/reschedule actions
     if (!meetingDetails) {
-      // Return basic info from token so user can at least see their booking
+      // If cancelling — still delete Zoho event even if Zoom meeting is gone
+      if (action === 'cancel') {
+        try {
+          const zohoToken = await getZohoToken();
+          if (zohoEventId) {
+            await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + zohoEventId, {
+              method:  'DELETE',
+              headers: { Authorization: 'Zoho-oauthtoken ' + zohoToken },
+            });
+            console.log('[ACRM] Zoho event deleted (zoom already gone):', zohoEventId);
+          }
+        } catch(e) {
+          console.log('[ACRM] Zoho delete error:', e.message);
+        }
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ success: true, action: 'cancelled', ref }),
+        };
+      }
+
+      // Otherwise return basic info from token
       return {
         statusCode: 200,
         headers,
