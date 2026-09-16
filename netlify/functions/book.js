@@ -190,6 +190,23 @@ exports.handler = async function(event, context) {
         ? eventResult.data[0].details.id : null;
       console.log('[ACRM] Zoho event created and linked, id:', zohoEventId);
 
+      // ── Create 15 min buffer event after the meeting ─────────────
+      try {
+        const bufferEnd = new Date(new Date(toNZISO(evt.End_DateTime)).getTime() + 15 * 60 * 1000);
+        const bufferEndISO = bufferEnd.toISOString().replace('.000Z', '+00:00');
+        await createZohoEvent(zohoToken, {
+          Event_Title:    'Meeting Buffer Time — ' + clientName,
+          Start_DateTime: toNZISO(evt.End_DateTime),
+          End_DateTime:   bufferEndISO,
+          Owner:          { id: getZohoOwnerId(adviserId) },
+          Description:    'Buffer time after: ' + mt.name + ' with ' + clientName + ' (Ref: ' + ref + ')',
+          Type:           'Meeting Buffer Time',
+        });
+        console.log('[ACRM] Buffer event created');
+      } catch(bufferErr) {
+        console.log('[ACRM] Buffer event error:', bufferErr.message);
+      }
+
       // Add client notes as a linked Note on the Event
       if (client.notes && client.notes.trim() && eventResult.data && eventResult.data[0]) {
         const eventId = eventResult.data[0].details && eventResult.data[0].details.id;
