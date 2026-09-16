@@ -164,7 +164,9 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
     const startUTC = new Date(event.Start_DateTime);
     const endUTC   = new Date(event.End_DateTime);
     const startNZ  = new Date(startUTC.getTime() + NZ_OFFSET_MS);
-    const endNZ    = new Date(endUTC.getTime()   + NZ_OFFSET_MS);
+    // Add 15 minute buffer after each meeting
+    const BUFFER_MS = 15 * 60 * 1000;
+    const endNZ    = new Date(endUTC.getTime() + NZ_OFFSET_MS + BUFFER_MS);
 
     console.log('[ACRM] NZ time:', startNZ.toISOString(), '-', endNZ.toISOString());
 

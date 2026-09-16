@@ -73,7 +73,8 @@ exports.handler = async function(event) {
       const startUTC = new Date(event.Start_DateTime);
       const endUTC   = new Date(event.End_DateTime);
       const startNZ  = new Date(startUTC.getTime() + NZ_OFFSET_MS);
-      const endNZ    = new Date(endUTC.getTime()   + NZ_OFFSET_MS);
+      // Add 15 minute buffer after each meeting
+      const endNZ    = new Date(endUTC.getTime()   + NZ_OFFSET_MS + (15 * 60 * 1000));
 
       // Get the date key YYYY-MM-DD
       const dateKey = startNZ.getUTCFullYear() + '-' +
