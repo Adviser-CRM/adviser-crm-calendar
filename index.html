@@ -604,14 +604,6 @@ textarea.form-input { resize: vertical; min-height: 90px; }
       </div>
     </div>
 
-    <div class="adviser-badge" id="adviser-badge" style="display:none;">
-      <div class="adviser-avatar" id="adviser-initials">SD</div>
-      <div>
-        <div class="adviser-name" id="adviser-name">Sean Davis</div>
-        <div class="adviser-role" id="adviser-role">CEO</div>
-      </div>
-    </div>
-
     <div class="left-footer">
       <div>© 2026 Adviser CRM · All Rights Reserved</div>
       <div><a href="#">Privacy Policy</a> · <a href="#">Terms</a></div>
@@ -1091,17 +1083,6 @@ function goToStep(n) {
     updateConfirmBar();
   }
 
-  // Show adviser badge after step 1
-  var badge = document.getElementById('adviser-badge');
-  if (state.adviser && n > 1) {
-    badge.style.display = 'flex';
-    document.getElementById('adviser-initials').textContent = '👤';
-    document.getElementById('adviser-name').textContent = 'Our team';
-    document.getElementById('adviser-role').textContent  = state.adviser.role;
-  } else {
-    badge.style.display = 'none';
-  }
-
   // Scroll right panel to top
   document.querySelector('.right').scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1261,7 +1242,6 @@ function resetBooking() {
   document.getElementById('f-notes').value     = '';
   document.querySelectorAll('.has-error').forEach(function(e) { e.classList.remove('has-error'); });
   goToStep(1);
-  document.getElementById('adviser-badge').style.display = 'none';
   state.calYear  = new Date().getFullYear();
   state.calMonth = new Date().getMonth();
   renderCalendar();
