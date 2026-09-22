@@ -103,8 +103,20 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 .step-desc { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 2px; }
 .step-item.active .step-desc { color: rgba(255,255,255,0.5); }
 
+.left-back {
+  margin-top: auto; align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.8); font-size: 13px; font-weight: 600;
+  text-decoration: none; transition: all 0.2s;
+}
+.left-back:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.5); color: #fff; }
+.left-back span { transition: transform 0.2s; }
+.left-back:hover span { transform: translateX(-3px); }
+
 .left-footer {
-  margin-top: auto; padding-top: 32px;
+  padding-top: 24px;
   font-size: 11px; color: rgba(255,255,255,0.25);
   line-height: 1.6;
 }
@@ -502,6 +514,16 @@ textarea.form-input { resize: vertical; min-height: 90px; }
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(7,56,93,0.3);
 }
+.confirm-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.btn-new-booking.btn-outline {
+  background: #fff; color: var(--navy);
+  border: 1.5px solid var(--navy);
+  box-shadow: none; text-decoration: none;
+}
+.btn-new-booking.btn-outline:hover {
+  background: rgba(7,56,93,0.06); color: var(--navy);
+  transform: translateY(-1px); box-shadow: 0 2px 8px rgba(7,56,93,0.15);
+}
 
 /* ── Toast ── */
 .toast {
@@ -603,6 +625,10 @@ textarea.form-input { resize: vertical; min-height: 90px; }
         </div>
       </div>
     </div>
+
+    <a class="left-back" href="https://advisercrm.co.nz">
+      <span>←</span> Back to our website
+    </a>
 
     <div class="left-footer">
       <div>© 2026 Adviser CRM · All Rights Reserved</div>
@@ -816,7 +842,10 @@ textarea.form-input { resize: vertical; min-height: 90px; }
         </div>
         <div class="confirm-ref" id="conf-ref"></div>
 
-        <button class="btn-new-booking" onclick="resetBooking()">Book another meeting</button>
+        <div class="confirm-actions">
+          <button class="btn-new-booking" onclick="resetBooking()">Book another meeting</button>
+          <a class="btn-new-booking btn-outline" href="https://advisercrm.co.nz">Back to our website <span>→</span></a>
+        </div>
       </div>
     </div>
 
