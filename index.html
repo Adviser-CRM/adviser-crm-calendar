@@ -641,7 +641,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
 
     <!-- Reschedule banner -->
     <div class="reschedule-banner" id="reschedule-banner">
-      ✅ Your original booking has been cancelled. Please select a new date and time.
+      🔁 Rescheduling — pick a new date and time. Your original booking will be cancelled once the new one is confirmed.
     </div>
 
     <!-- Step 1: Meeting type -->
@@ -957,6 +957,7 @@ var state = {
   loadingSlots: false,
   monthlyData:  {}, // key: "adviser_a-2026-9" → busyByDay map
   monthlyLoading: false,
+  originalToken: null, // set when arriving from manage.html to reschedule
 };
 
 // ── API Endpoints ─────────────────────────────────────────────────
@@ -972,6 +973,17 @@ function init() {
     var banner = document.getElementById('reschedule-banner');
     if (banner) banner.classList.add('visible');
   }
+
+  // Rescheduling: remember the original booking so book.js can cancel it once the new one is confirmed
+  state.originalToken = params.get('originalToken') || null;
+
+  // Pre-fill the client's details passed across from manage.html
+  var prefill = { 'f-firstname': 'fn', 'f-lastname': 'ln', 'f-email': 'em', 'f-phone': 'ph' };
+  Object.keys(prefill).forEach(function(fieldId) {
+    var val = params.get(prefill[fieldId]);
+    var el  = document.getElementById(fieldId);
+    if (el && val) el.value = val;
+  });
 
   renderMeetingTypes();
   renderCalendar();
@@ -1237,6 +1249,7 @@ function submitBooking() {
         client:    { firstName:fname, lastName:lname, email:email, phone:phone, notes:notes },
         meetingType: mt.id,
         adviserId:   state.meetingType ? state.meetingType.adviser : 'adviser_a',
+        originalToken: state.originalToken || undefined,
       }),
     })
     .then(function(r) { return r.json(); })
@@ -1269,6 +1282,7 @@ function resetBooking() {
   document.getElementById('f-email').value     = '';
   document.getElementById('f-phone').value     = '';
   document.getElementById('f-notes').value     = '';
+  state.originalToken = null;
   document.querySelectorAll('.has-error').forEach(function(e) { e.classList.remove('has-error'); });
   goToStep(1);
   state.calYear  = new Date().getFullYear();
