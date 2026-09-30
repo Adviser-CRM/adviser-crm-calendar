@@ -292,6 +292,11 @@ exports.handler = async function(event, context) {
         } else {
           console.log('[ACRM] No Zoho event ID in token — skipping Zoho delete');
         }
+        // Remove the original booking's 15 min buffer event too
+        if (origRef) {
+          const zohoToken3 = await getZohoToken();
+          await deleteBufferEvent(zohoToken3, origRef);
+        }
       } catch(rescheduleErr) {
         console.log('[ACRM] Error cancelling original:', rescheduleErr.message);
       }
@@ -464,6 +469,29 @@ async function createEventNote(token, eventId, clientName, notes, ref) {
 }
 
 // Map adviser key to Zoho user ID
+async function deleteBufferEvent(token, ref) {
+  // Find the "Meeting Buffer Time" event created alongside this booking (its Description contains the ref) and delete it
+  try {
+    const criteria = encodeURIComponent('(Description:contains:' + ref + ')');
+    const res = await fetch(
+      'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria + '&fields=id,Event_Title',
+      { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
+    );
+    if (res.status === 204) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
+    const data = await res.json();
+    const buffers = (data.data || []).filter(e => /^Meeting Buffer Time/.test(e.Event_Title || ''));
+    if (!buffers.length) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
+    const ids = buffers.map(e => e.id).join(',');
+    await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + ids, {
+      method:  'DELETE',
+      headers: { Authorization: 'Zoho-oauthtoken ' + token },
+    });
+    console.log('[ACRM] Buffer event deleted:', ids);
+  } catch(e) {
+    console.log('[ACRM] Buffer delete error:', e.message);
+  }
+}
+
 function getZohoOwnerId(adviserId) {
   const ids = {
     adviser_a: process.env.ZOHO_OWNER_A || '1484359000000083003',

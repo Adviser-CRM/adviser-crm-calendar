@@ -107,6 +107,7 @@ exports.handler = async function(event) {
             });
             console.log('[ACRM] Zoho event deleted (zoom already gone):', zohoEventId);
           }
+          await deleteBufferEvent(zohoToken, ref);
         } catch(e) {
           console.log('[ACRM] Zoho delete error:', e.message);
         }
@@ -207,6 +208,7 @@ exports.handler = async function(event) {
           // Fallback to search by ref
           await cancelZohoEvent(zohoToken, ref);
         }
+        await deleteBufferEvent(zohoToken, ref);
       } catch(e) {
         console.log('[ACRM] Zoho cancel error:', e.message);
       }
@@ -379,6 +381,8 @@ async function getClientDetailsFromZoho(token, ref) {
     }
 
     console.log('[ACRM] Zoho search response:', JSON.stringify(data).substring(0, 200));
+    // The buffer event's description also contains the ref — skip it
+    if (data.data) data.data = data.data.filter(e => !/^Meeting Buffer Time/.test(e.Event_Title || ''));
     if (!data.data || !data.data.length) return null;
 
     const desc = data.data[0].Description || '';
@@ -414,6 +418,8 @@ async function cancelZohoEvent(token, ref, label) {
     { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
   );
   const data = await res.json();
+  // The buffer event's description also contains the ref — skip it
+  if (data.data) data.data = data.data.filter(e => !/^Meeting Buffer Time/.test(e.Event_Title || ''));
   if (!data.data || !data.data.length) {
     console.log('[ACRM] No Zoho event found for ref:', ref);
     return;
@@ -432,6 +438,29 @@ async function cancelZohoEvent(token, ref, label) {
     }),
   });
   console.log('[ACRM] Zoho event marked cancelled:', eventId);
+}
+
+async function deleteBufferEvent(token, ref) {
+  // Find the "Meeting Buffer Time" event created alongside this booking (its Description contains the ref) and delete it
+  try {
+    const criteria = encodeURIComponent('(Description:contains:' + ref + ')');
+    const res = await fetch(
+      'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria + '&fields=id,Event_Title',
+      { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
+    );
+    if (res.status === 204) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
+    const data = await res.json();
+    const buffers = (data.data || []).filter(e => /^Meeting Buffer Time/.test(e.Event_Title || ''));
+    if (!buffers.length) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
+    const ids = buffers.map(e => e.id).join(',');
+    await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + ids, {
+      method:  'DELETE',
+      headers: { Authorization: 'Zoho-oauthtoken ' + token },
+    });
+    console.log('[ACRM] Buffer event deleted:', ids);
+  } catch(e) {
+    console.log('[ACRM] Buffer delete error:', e.message);
+  }
 }
 
 // ── Email ─────────────────────────────────────────────────────────
