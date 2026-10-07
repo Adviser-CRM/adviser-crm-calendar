@@ -154,7 +154,9 @@ exports.handler = async function(event) {
       // Update Zoho Event to show rescheduled
       try {
         const zohoToken2 = await getZohoToken();
-        await cancelZohoEvent(zohoToken2, ref, 'RESCHEDULED');
+        await cancelZohoEvent(zohoToken2, ref, 'RESCHEDULED', zohoEventId);
+        // The old time slot is gone, so its buffer goes too (the new booking creates its own)
+        await deleteBufferEvent(zohoToken2, ref);
       } catch(e) {
         console.log('[ACRM] Zoho reschedule error:', e.message);
       }
@@ -163,7 +165,7 @@ exports.handler = async function(event) {
       let clientDetails = null;
       try {
         const zohoToken3 = await getZohoToken();
-        clientDetails = await getClientDetailsFromZoho(zohoToken3, ref);
+        clientDetails = await getClientDetailsFromZoho(zohoToken3, ref, zohoEventId);
         console.log('[ACRM] Client details retrieved:', clientDetails);
       } catch(e) {
         console.log('[ACRM] Could not get client details:', e.message);
@@ -206,7 +208,7 @@ exports.handler = async function(event) {
           console.log('[ACRM] Zoho event deleted:', zohoEventId);
         } else {
           // Fallback to search by ref
-          await cancelZohoEvent(zohoToken, ref);
+          await cancelZohoEvent(zohoToken, ref, 'CANCELLED', zohoEventId);
         }
         await deleteBufferEvent(zohoToken, ref);
       } catch(e) {
@@ -357,39 +359,27 @@ async function getZohoToken() {
   return data.access_token;
 }
 
-async function getClientDetailsFromZoho(token, ref) {
-  // Search for the Zoho Event by ref and extract client details from description
+async function getBookingEvent(token, eventId) {
+  // Look up the booking's Zoho Event by the id stored in the manage-link token.
+  // (Zoho's search API can't search Description, so the old "search by ref" lookups never found anything.)
+  if (!eventId) { console.log('[ACRM] No Zoho event id in token'); return null; }
+  const res = await fetch(
+    'https://www.zohoapis.com/crm/v3/Events/' + eventId + '?fields=id,Event_Title,Description,Who_Id',
+    { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
+  );
+  if (!res.ok) { console.log('[ACRM] Zoho event lookup failed:', res.status); return null; }
+  const data = await res.json();
+  return (data.data && data.data[0]) || null;
+}
+
+async function getClientDetailsFromZoho(token, ref, eventId) {
+  // Extract client details from the booking event's description (Client/Email/Phone lines)
   try {
-    // Search by Event_Title which contains the ref
-    const titleCriteria = encodeURIComponent('(Event_Title:contains:' + ref + ')');
-    let res = await fetch(
-      'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + titleCriteria +
-      '&fields=id,Event_Title,Description,Who_Id',
-      { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
-    );
-    let data = await res.json();
-
-    // Fallback: search by Description
-    if (!data.data || !data.data.length) {
-      const descCriteria = encodeURIComponent('(Description:contains:' + ref + ')');
-      res = await fetch(
-        'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + descCriteria +
-        '&fields=id,Event_Title,Description,Who_Id',
-        { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
-      );
-      data = await res.json();
-    }
-
-    console.log('[ACRM] Zoho search response:', JSON.stringify(data).substring(0, 200));
-    // The buffer event's description also contains the ref — skip it
-    if (data.data) data.data = data.data.filter(e => !/^Meeting Buffer Time/.test(e.Event_Title || ''));
-    if (!data.data || !data.data.length) return null;
-
-    const desc = data.data[0].Description || '';
+    const evt = await getBookingEvent(token, eventId);
+    if (!evt) return null;
+    const desc = evt.Description || '';
     console.log('[ACRM] Found Zoho event for ref:', ref, 'desc length:', desc.length);
 
-    // Parse client details from description
-    // Parse client details from description (Client/Email/Phone lines)
     const clientMatch = desc.match(/Client:[\s]*([^\n]+)/);
     const emailMatch  = desc.match(/Email:[\s]*([^\n]+)/);
     const phoneMatch  = desc.match(/Phone:[\s]*([^\n]+)/);
@@ -409,55 +399,54 @@ async function getClientDetailsFromZoho(token, ref) {
   }
 }
 
-async function cancelZohoEvent(token, ref, label) {
+async function cancelZohoEvent(token, ref, label, eventId) {
   label = label || 'CANCELLED';
-  // Search for the event by ref in description
-  const criteria = encodeURIComponent('(Description:contains:' + ref + ')');
-  const res = await fetch(
-    'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria + '&fields=id,Event_Title',
-    { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
-  );
-  const data = await res.json();
-  // The buffer event's description also contains the ref — skip it
-  if (data.data) data.data = data.data.filter(e => !/^Meeting Buffer Time/.test(e.Event_Title || ''));
-  if (!data.data || !data.data.length) {
+  const evt = await getBookingEvent(token, eventId);
+  if (!evt) {
     console.log('[ACRM] No Zoho event found for ref:', ref);
     return;
   }
-  const eventId = data.data[0].id;
+  if ((evt.Event_Title || '').startsWith('[' + label + ']')) return;   // already marked
 
-  // Update event title to show cancelled
+  // Update event title to show cancelled / rescheduled
   await fetch('https://www.zohoapis.com/crm/v3/Events', {
     method:  'PUT',
     headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       data: [{
-        id:          eventId,
-        Event_Title: '[' + label + '] ' + data.data[0].Event_Title,
+        id:          evt.id,
+        Event_Title: '[' + label + '] ' + evt.Event_Title,
       }]
     }),
   });
-  console.log('[ACRM] Zoho event marked cancelled:', eventId);
+  console.log('[ACRM] Zoho event marked ' + label.toLowerCase() + ':', evt.id);
 }
 
 async function deleteBufferEvent(token, ref) {
-  // Find the "Meeting Buffer Time" event created alongside this booking (its Description contains the ref) and delete it
+  // Find the "Meeting Buffer Time" event(s) created alongside this booking and delete them.
+  // Zoho's search API can't filter on Description (it rejects "contains" on that field), so we
+  // list buffer events by Type and match "(Ref: <ref>)" in their Description here instead.
   try {
-    const criteria = encodeURIComponent('(Description:contains:' + ref + ')');
-    const res = await fetch(
-      'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria + '&fields=id,Event_Title',
-      { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
-    );
-    if (res.status === 204) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
-    const data = await res.json();
-    const buffers = (data.data || []).filter(e => /^Meeting Buffer Time/.test(e.Event_Title || ''));
-    if (!buffers.length) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
-    const ids = buffers.map(e => e.id).join(',');
-    await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + ids, {
+    const tag = '(Ref: ' + ref + ')';
+    const ids = [];
+    for (let page = 1; page <= 5; page++) {
+      const res = await fetch(
+        'https://www.zohoapis.com/crm/v3/Events/search?criteria=' +
+        encodeURIComponent('(Type:equals:Meeting Buffer Time)') +
+        '&fields=id,Event_Title,Description&per_page=200&page=' + page,
+        { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
+      );
+      if (res.status === 204) break;
+      const data = await res.json();
+      (data.data || []).forEach(e => { if ((e.Description || '').includes(tag)) ids.push(e.id); });
+      if (!data.info || !data.info.more_records) break;
+    }
+    if (!ids.length) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
+    await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + ids.join(','), {
       method:  'DELETE',
       headers: { Authorization: 'Zoho-oauthtoken ' + token },
     });
-    console.log('[ACRM] Buffer event deleted:', ids);
+    console.log('[ACRM] Buffer event deleted:', ids.join(','));
   } catch(e) {
     console.log('[ACRM] Buffer delete error:', e.message);
   }
@@ -504,13 +493,37 @@ function cancelEmailHtml({ topic, startNZ, ref }) {
   '</div></body></html>';
 }
 
+// ── NZ timezone helpers (handle NZST +12:00 / NZDT +13:00 automatically) ──
+function nzOffsetMinutesAt(date) {
+  // Offset of Pacific/Auckland from UTC (in minutes) at the given instant
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Pacific/Auckland', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(date);
+  const m = {};
+  parts.forEach(p => { m[p.type] = p.value; });
+  const asUTC = Date.UTC(+m.year, +m.month - 1, +m.day, +m.hour, +m.minute, +m.second);
+  return Math.round((asUTC - date.getTime()) / 60000);
+}
+function nzOffsetString(localDateStr) {
+  // ISO offset ("+12:00" or "+13:00") for an NZ wall-clock time like "2026-10-07T09:00:00"
+  const guess   = new Date(localDateStr + 'Z');
+  const first   = nzOffsetMinutesAt(guess);
+  const instant = new Date(guess.getTime() - first * 60000);
+  const mins    = nzOffsetMinutesAt(instant);
+  const sign    = mins < 0 ? '-' : '+';
+  const abs     = Math.abs(mins);
+  return sign + String(Math.floor(abs / 60)).padStart(2, '0') + ':' + String(abs % 60).padStart(2, '0');
+}
+
 function formatDateTime(dateStr) {
   if (!dateStr) return '—';
   try {
     var str = dateStr;
-    // If no timezone info, treat as NZ time (+12:00)
+    // If no timezone info, treat as NZ wall-clock time (+12:00 or +13:00 depending on DST)
     if (!str.includes('+') && !str.includes('Z') && !str.includes('z')) {
-      str = str + '+12:00';
+      str = str + nzOffsetString(str);
     }
     return new Date(str).toLocaleString('en-NZ', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',

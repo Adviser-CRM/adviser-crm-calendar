@@ -175,11 +175,12 @@ exports.handler = async function(event, context) {
 
       // Link to CRM record if found/created
       if (crmRecord) {
-        if (crmRecord.module === 'Contacts' || crmRecord.module === 'Leads') {
-          eventData['$se_module'] = crmRecord.module;
+        // Zoho rule: Who_Id is for Contacts only. Leads (and Accounts) must go in What_Id with $se_module.
+        if (crmRecord.module === 'Contacts') {
+          eventData['$se_module'] = 'Contacts';
           eventData.Who_Id = { id: crmRecord.id };
-        } else if (crmRecord.module === 'Accounts') {
-          eventData['$se_module'] = 'Accounts';
+        } else if (crmRecord.module === 'Leads' || crmRecord.module === 'Accounts') {
+          eventData['$se_module'] = crmRecord.module;
           eventData.What_Id = { id: crmRecord.id };
         }
         console.log('[ACRM] Event linked to', crmRecord.module, crmRecord.id);
@@ -195,11 +196,13 @@ exports.handler = async function(event, context) {
         const bufferEnd = new Date(new Date(toNZISO(evt.End_DateTime)).getTime() + 15 * 60 * 1000);
         const bufferEndISO = bufferEnd.toISOString().replace('.000Z', '+00:00');
         await createZohoEvent(zohoToken, {
-          Event_Title:    'Meeting Buffer Time — ' + clientName,
+          Event_Title:    'Meeting Buffer Time — ' + clientName + ' (Online Booking)',
           Start_DateTime: toNZISO(evt.End_DateTime),
           End_DateTime:   bufferEndISO,
           Owner:          { id: getZohoOwnerId(adviserId) },
-          Description:    'Buffer time after: ' + mt.name + ' with ' + clientName + ' (Ref: ' + ref + ')',
+          // "(Ref: …)" and "Linked event: …" are how the cancel/reschedule code and the CRM sync function find this buffer
+          Description:    'Buffer time after: ' + mt.name + ' with ' + clientName + ' (Ref: ' + ref + ')' +
+                          (zohoEventId ? '\nLinked event: ' + zohoEventId : ''),
           Type:           'Meeting Buffer Time',
         });
         console.log('[ACRM] Buffer event created');
@@ -470,23 +473,30 @@ async function createEventNote(token, eventId, clientName, notes, ref) {
 
 // Map adviser key to Zoho user ID
 async function deleteBufferEvent(token, ref) {
-  // Find the "Meeting Buffer Time" event created alongside this booking (its Description contains the ref) and delete it
+  // Find the "Meeting Buffer Time" event(s) created alongside this booking and delete them.
+  // Zoho's search API can't filter on Description (it rejects "contains" on that field), so we
+  // list buffer events by Type and match "(Ref: <ref>)" in their Description here instead.
   try {
-    const criteria = encodeURIComponent('(Description:contains:' + ref + ')');
-    const res = await fetch(
-      'https://www.zohoapis.com/crm/v3/Events/search?criteria=' + criteria + '&fields=id,Event_Title',
-      { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
-    );
-    if (res.status === 204) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
-    const data = await res.json();
-    const buffers = (data.data || []).filter(e => /^Meeting Buffer Time/.test(e.Event_Title || ''));
-    if (!buffers.length) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
-    const ids = buffers.map(e => e.id).join(',');
-    await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + ids, {
+    const tag = '(Ref: ' + ref + ')';
+    const ids = [];
+    for (let page = 1; page <= 5; page++) {
+      const res = await fetch(
+        'https://www.zohoapis.com/crm/v3/Events/search?criteria=' +
+        encodeURIComponent('(Type:equals:Meeting Buffer Time)') +
+        '&fields=id,Event_Title,Description&per_page=200&page=' + page,
+        { headers: { Authorization: 'Zoho-oauthtoken ' + token } }
+      );
+      if (res.status === 204) break;
+      const data = await res.json();
+      (data.data || []).forEach(e => { if ((e.Description || '').includes(tag)) ids.push(e.id); });
+      if (!data.info || !data.info.more_records) break;
+    }
+    if (!ids.length) { console.log('[ACRM] No buffer event found for ref:', ref); return; }
+    await fetch('https://www.zohoapis.com/crm/v3/Events?ids=' + ids.join(','), {
       method:  'DELETE',
       headers: { Authorization: 'Zoho-oauthtoken ' + token },
     });
-    console.log('[ACRM] Buffer event deleted:', ids);
+    console.log('[ACRM] Buffer event deleted:', ids.join(','));
   } catch(e) {
     console.log('[ACRM] Buffer delete error:', e.message);
   }
@@ -675,12 +685,36 @@ function generateManageToken(ref, zoomId, startDateTime, zohoEventId) {
   return Buffer.from(payload).toString('base64url');
 }
 
+// ── NZ timezone helpers (handle NZST +12:00 / NZDT +13:00 automatically) ──
+function nzOffsetMinutesAt(date) {
+  // Offset of Pacific/Auckland from UTC (in minutes) at the given instant
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Pacific/Auckland', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(date);
+  const m = {};
+  parts.forEach(p => { m[p.type] = p.value; });
+  const asUTC = Date.UTC(+m.year, +m.month - 1, +m.day, +m.hour, +m.minute, +m.second);
+  return Math.round((asUTC - date.getTime()) / 60000);
+}
+function nzOffsetString(localDateStr) {
+  // ISO offset ("+12:00" or "+13:00") for an NZ wall-clock time like "2026-10-07T09:00:00"
+  const guess   = new Date(localDateStr + 'Z');
+  const first   = nzOffsetMinutesAt(guess);
+  const instant = new Date(guess.getTime() - first * 60000);
+  const mins    = nzOffsetMinutesAt(instant);
+  const sign    = mins < 0 ? '-' : '+';
+  const abs     = Math.abs(mins);
+  return sign + String(Math.floor(abs / 60)).padStart(2, '0') + ':' + String(abs % 60).padStart(2, '0');
+}
+
 function toNZISO(dateStr) {
   // Add NZ timezone offset if not already present
   if (!dateStr) return dateStr;
   if (dateStr.includes('+') || dateStr.includes('Z')) return dateStr;
-  // Default to NZST +12:00 (adjust for NZDT +13:00 in summer if needed)
-  return dateStr + '+12:00';
+  // Append the correct NZ offset for that date (NZST +12:00 or NZDT +13:00)
+  return dateStr + nzOffsetString(dateStr);
 }
 
 function formatDateTime(dateStr) {
@@ -689,7 +723,7 @@ function formatDateTime(dateStr) {
     // If no timezone info, append NZ offset to avoid UTC misinterpretation
     var str = dateStr;
     if (!str.includes('+') && !str.includes('Z') && !str.includes('z')) {
-      str = str + '+12:00';
+      str = str + nzOffsetString(str);
     }
     return new Date(str).toLocaleString('en-NZ', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',

@@ -153,9 +153,6 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
 
   console.log('[ACRM] Found', data.data.length, 'events');
 
-  // NZ is UTC+12 (NZST) in September before daylight saving
-  const NZ_OFFSET_MS = 12 * 60 * 60 * 1000;
-
   const busySlots = [];
   data.data.forEach(function(event) {
     if (!event.Start_DateTime || !event.End_DateTime) return;
@@ -163,6 +160,8 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
 
     const startUTC = new Date(event.Start_DateTime);
     const endUTC   = new Date(event.End_DateTime);
+    // NZ offset at the time of this event (+12h NZST or +13h NZDT)
+    const NZ_OFFSET_MS = nzOffsetMinutesAt(startUTC) * 60 * 1000;
     const startNZ  = new Date(startUTC.getTime() + NZ_OFFSET_MS);
     // Add 15 minute buffer after each meeting
     const BUFFER_MS = 15 * 60 * 1000;
@@ -184,4 +183,28 @@ async function getAdviserEvents(token, ownerId, startOfDay, endOfDay) {
   });
 
   return busySlots;
+}
+
+// ── NZ timezone helpers (handle NZST +12:00 / NZDT +13:00 automatically) ──
+function nzOffsetMinutesAt(date) {
+  // Offset of Pacific/Auckland from UTC (in minutes) at the given instant
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Pacific/Auckland', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(date);
+  const m = {};
+  parts.forEach(p => { m[p.type] = p.value; });
+  const asUTC = Date.UTC(+m.year, +m.month - 1, +m.day, +m.hour, +m.minute, +m.second);
+  return Math.round((asUTC - date.getTime()) / 60000);
+}
+function nzOffsetString(localDateStr) {
+  // ISO offset ("+12:00" or "+13:00") for an NZ wall-clock time like "2026-10-07T09:00:00"
+  const guess   = new Date(localDateStr + 'Z');
+  const first   = nzOffsetMinutesAt(guess);
+  const instant = new Date(guess.getTime() - first * 60000);
+  const mins    = nzOffsetMinutesAt(instant);
+  const sign    = mins < 0 ? '-' : '+';
+  const abs     = Math.abs(mins);
+  return sign + String(Math.floor(abs / 60)).padStart(2, '0') + ':' + String(abs % 60).padStart(2, '0');
 }
