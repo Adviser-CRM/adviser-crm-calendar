@@ -1241,9 +1241,14 @@ function submitBooking() {
   }
 
   if (BOOKING_ENDPOINT) {
+    // Never let the button spin forever — give up after 45s
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = setTimeout(function() { if (controller) controller.abort(); }, 45000);
+
     fetch(BOOKING_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller ? controller.signal : undefined,
       body: JSON.stringify({
         event:     eventPayload,
         client:    { firstName:fname, lastName:lname, email:email, phone:phone, notes:notes },
@@ -1254,10 +1259,19 @@ function submitBooking() {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
+      clearTimeout(timer);
+      if (data && data.success === false) {
+        // The server declined the booking — show its reason instead of a false success
+        throw new Error(data.error || 'Booking failed');
+      }
       onSuccess(data.reference || generateRef());
     })
-    .catch(function() {
-      showToast('Booking failed — please try again or call us directly', 'error');
+    .catch(function(err) {
+      clearTimeout(timer);
+      var msg = (err && err.name === 'AbortError')
+        ? 'The booking is taking too long — please try again or call us directly'
+        : ((err && err.message && err.message !== 'Failed to fetch') ? err.message : 'Booking failed — please try again or call us directly');
+      showToast(msg, 'error');
       btn.disabled = false;
       btn.textContent = 'Confirm booking';
     });
