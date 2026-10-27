@@ -50,57 +50,22 @@ exports.handler = async function(event) {
 
     const ownerId = ZOHO_OWNER_IDS[adviserId];
 
-    // Build month date range
-    const startOfMonth = year + '-' + String(month).padStart(2, '0') + '-01T00:00:00+12:00';
-    const lastDay      = new Date(year, month, 0).getDate();
-    const endOfMonth   = year + '-' + String(month).padStart(2, '0') + '-' +
-      String(lastDay).padStart(2, '0') + 'T23:59:59+13:00';
+    // NZ dates of this month
+    const firstDate = year + '-' + String(month).padStart(2, '0') + '-01';
+    const lastDay   = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const lastDate  = year + '-' + String(month).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
 
-    console.log('[ACRM] Monthly fetch:', adviserId, year, month, startOfMonth, '->', endOfMonth);
+    console.log('[ACRM] Monthly fetch:', adviserId, year, month, firstDate, '->', lastDate);
 
     const token  = await getZohoToken();
-    const events = await getMonthEvents(token, ownerId, startOfMonth, endOfMonth);
+    const events = await fetchOwnerEvents(token, ownerId, firstDate, lastDate);
 
-    // Build a map of date → { morning: bool, afternoon: bool }
-    // morning = any busy slot 09:00-11:30
-    // afternoon = any busy slot 12:00-16:30
+    // date → busy 30-min slots; multi-day events now mark every day they cover
     const busyByDay = {};
-
-    events.forEach(function(event) {
-      if (!event.Start_DateTime || !event.End_DateTime) return;
-
-      const startUTC = new Date(event.Start_DateTime);
-      // NZ offset at the time of this event (+12h NZST or +13h NZDT)
-      const NZ_OFFSET_MS = nzOffsetMinutesAt(startUTC) * 60 * 1000;
-      const endUTC   = new Date(event.End_DateTime);
-      const startNZ  = new Date(startUTC.getTime() + NZ_OFFSET_MS);
-      // Add 15 minute buffer after each meeting
-      const endNZ    = new Date(endUTC.getTime()   + NZ_OFFSET_MS + (15 * 60 * 1000));
-
-      // Get the date key YYYY-MM-DD
-      const dateKey = startNZ.getUTCFullYear() + '-' +
-        String(startNZ.getUTCMonth() + 1).padStart(2, '0') + '-' +
-        String(startNZ.getUTCDate()).padStart(2, '0');
-
-      if (!busyByDay[dateKey]) busyByDay[dateKey] = [];
-
-      // Generate 30-min busy slots
-      var slotTime = new Date(startNZ);
-      var mins = slotTime.getUTCMinutes();
-      slotTime.setUTCMinutes(mins < 30 ? 0 : 30, 0, 0);
-
-      while (slotTime < endNZ) {
-        var hh = String(slotTime.getUTCHours()).padStart(2, '0');
-        var mm = String(slotTime.getUTCMinutes()).padStart(2, '0');
-        busyByDay[dateKey].push(hh + ':' + mm);
-        slotTime.setUTCMinutes(slotTime.getUTCMinutes() + 30);
-      }
-    });
-
-    // Deduplicate
-    Object.keys(busyByDay).forEach(function(d) {
-      busyByDay[d] = busyByDay[d].filter(function(s, i, a) { return a.indexOf(s) === i; });
-    });
+    for (let d = firstDate; d <= lastDate; d = addDays(d, 1)) {
+      const slots = busySlotsForDay(events, d);
+      if (slots.length) busyByDay[d] = slots;
+    }
 
     console.log('[ACRM] Monthly busy days:', Object.keys(busyByDay).length);
 
@@ -140,33 +105,78 @@ async function getZohoToken() {
   return data.access_token;
 }
 
-async function getMonthEvents(token, ownerId, startOfMonth, endOfMonth) {
-  const searchUrl = 'https://www.zohoapis.com/crm/v3/Events/search' +
-    '?criteria=(Start_DateTime:between:' +
-    encodeURIComponent(startOfMonth + ',' + endOfMonth) + ')' +
-    '&fields=Event_Title,Start_DateTime,End_DateTime,Owner' +
-    '&per_page=100';
+// ── Busy-time helpers ─────────────────────────────────────────────
+// Zoho's search can only filter on when an event STARTS, so a multi-day event
+// (a holiday, a conference) would be missed on every day after its first.
+// We therefore look back LOOKBACK_DAYS and check for any OVERLAP with the day.
+// All-day events are stored by Zoho at midnight UTC (1 pm NZ), so we treat
+// them as covering whole NZ calendar dates instead of using their raw times.
+const LOOKBACK_DAYS = 60;
+const BUFFER_MS     = 15 * 60 * 1000;   // 15-minute gap after each timed meeting
+const SLOT_MS       = 30 * 60 * 1000;
 
-  const res = await fetch(searchUrl, {
-    headers: {
-      Authorization: 'Zoho-oauthtoken ' + token,
-      'Content-Type': 'application/json',
-    },
-  });
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function nzInstant(dateStr, hhmm) {
+  // Absolute time (ms) of an NZ wall-clock time, e.g. ("2026-11-03", "09:30")
+  const local = dateStr + 'T' + (hhmm || '00:00') + ':00';
+  return new Date(local + nzOffsetString(local)).getTime();
+}
+function zohoDateTime(ms) {
+  // "2026-11-03T00:00:00+13:00" — the format Zoho search expects
+  const local = new Date(ms + nzOffsetMinutesAt(new Date(ms)) * 60000).toISOString().slice(0, 19);
+  return local + nzOffsetString(local);
+}
 
-  const text = await res.text();
-  console.log('[ACRM] Monthly Zoho response:', text.substring(0, 300));
+async function fetchOwnerEvents(token, ownerId, fromDate, toDate) {
+  // All events for one owner that could touch NZ dates fromDate..toDate (inclusive)
+  const from = zohoDateTime(nzInstant(addDays(fromDate, -LOOKBACK_DAYS)));
+  const to   = zohoDateTime(nzInstant(addDays(toDate, 1)) - 1000);
+  const criteria = '((Owner:equals:' + ownerId + ')and(Start_DateTime:between:' + from + ',' + to + '))';
+  const events = [];
+  for (let page = 1; page <= 10; page++) {
+    const url = 'https://www.zohoapis.com/crm/v3/Events/search' +
+      '?criteria=' + encodeURIComponent(criteria) +
+      '&fields=Event_Title,Start_DateTime,End_DateTime,All_day,Owner' +
+      '&per_page=200&page=' + page;
+    const res = await fetch(url, { headers: { Authorization: 'Zoho-oauthtoken ' + token } });
+    if (res.status === 204) break;                       // no (more) results
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch (e) { console.log('[ACRM] Parse error:', text.substring(0, 300)); break; }
+    if (!data.data || !data.data.length) {
+      if (data.code || data.status === 'error') throw new Error('Zoho search failed: ' + text.substring(0, 300));
+      break;
+    }
+    events.push(...data.data);
+    if (!data.info || !data.info.more_records) break;
+  }
+  return events.filter(e => e.Start_DateTime && e.End_DateTime && (!e.Owner || e.Owner.id === ownerId));
+}
 
-  let data;
-  try { data = JSON.parse(text); }
-  catch(e) { return []; }
+function eventInterval(ev) {
+  if (ev.All_day) {
+    // Use the calendar dates Zoho stored (UTC), as whole NZ days
+    const first = new Date(ev.Start_DateTime).toISOString().slice(0, 10);
+    const last  = new Date(ev.End_DateTime).toISOString().slice(0, 10);
+    return { start: nzInstant(first), end: nzInstant(addDays(last, 1)) };
+  }
+  return { start: Date.parse(ev.Start_DateTime), end: Date.parse(ev.End_DateTime) + BUFFER_MS };
+}
 
-  if (!data.data || !data.data.length) return [];
-
-  // Filter by owner
-  return data.data.filter(function(e) {
-    return e.Owner && e.Owner.id === ownerId;
-  });
+function busySlotsForDay(events, dateStr) {
+  // ["09:00", "09:30", ...] — every 30-minute NZ slot on dateStr that overlaps an event
+  const intervals = events.map(eventInterval);
+  const slots = [];
+  for (let i = 0; i < 48; i++) {
+    const hhmm = String(Math.floor(i / 2)).padStart(2, '0') + ':' + (i % 2 ? '30' : '00');
+    const s = nzInstant(dateStr, hhmm);
+    if (intervals.some(iv => iv.start < s + SLOT_MS && iv.end > s)) slots.push(hhmm);
+  }
+  return slots;
 }
 
 // ── NZ timezone helpers (handle NZST +12:00 / NZDT +13:00 automatically) ──
