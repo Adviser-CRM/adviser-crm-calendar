@@ -435,6 +435,7 @@ function handleReschedule() {
   var urlParams = new URLSearchParams({
     rescheduled:   bookingData.ref || '',
     originalToken: manageToken     || '',
+    topic:         bookingData.topic || '',
     fn: client.firstName || '',
     ln: client.lastName  || '',
     em: client.email     || '',

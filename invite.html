@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Create Invite Link — Adviser CRM</title>
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#07385D; --blue:#00ABE6; --blue-dk:#0089b8; --blue-lt:#e8f7fd;
+  --ink:#1a2b3c; --mid:#5a7080; --muted:#98aab8; --divider:#e8edf2;
+  --bg:#f4f7fa; --card:#fff; --green:#059669; --green-lt:#d1fae5; --red:#dc2626; --red-lt:#fee2e2;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { min-height:100%; font-family:var(--sans); background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+.wrap { max-width:520px; margin:0 auto; padding:40px 20px 60px; }
+.brand { background:var(--navy); border-radius:16px; padding:28px 28px 24px; color:#fff; margin-bottom:20px; }
+.brand img { height:36px; display:block; margin-bottom:18px; }
+.brand h1 { font-size:22px; font-weight:700; letter-spacing:-0.3px; }
+.brand p  { font-size:13px; color:rgba(255,255,255,0.6); margin-top:6px; line-height:1.55; }
+.card { background:var(--card); border:1px solid var(--divider); border-radius:16px; padding:24px; box-shadow:0 1px 3px rgba(7,56,93,0.05); }
+label { display:block; font-size:12px; font-weight:600; color:var(--mid); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; }
+.field { margin-bottom:16px; }
+.hint { font-size:12px; color:var(--muted); margin-top:5px; }
+input, select {
+  width:100%; padding:12px 14px; border:1.5px solid var(--divider); border-radius:10px;
+  font-family:var(--sans); font-size:15px; color:var(--ink); background:#fff; transition:border-color .15s;
+}
+input:focus, select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(0,171,230,0.15); }
+.btn {
+  width:100%; padding:14px; border:none; border-radius:10px; cursor:pointer;
+  background:linear-gradient(135deg,var(--blue) 0%,var(--blue-dk) 100%); color:#fff;
+  font-family:var(--sans); font-size:15px; font-weight:600; transition:all .2s; margin-top:4px;
+}
+.btn:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,171,230,0.35); }
+.btn:disabled { opacity:.6; cursor:not-allowed; transform:none; box-shadow:none; }
+.result { display:none; margin-top:20px; padding:18px; border-radius:12px; background:var(--green-lt); border:1px solid #a7f3d0; }
+.result.visible { display:block; }
+.result h3 { font-size:14px; font-weight:700; color:var(--green); margin-bottom:8px; }
+.link-row { display:flex; gap:8px; }
+.link-row input { font-size:13px; background:#fff; }
+.btn-copy { flex:0 0 auto; padding:0 16px; border-radius:10px; border:1.5px solid var(--navy); background:#fff; color:var(--navy); font-weight:600; font-family:var(--sans); cursor:pointer; }
+.btn-copy:hover { background:rgba(7,56,93,0.06); }
+.meta { font-size:12px; color:var(--mid); margin-top:10px; line-height:1.6; }
+.error { display:none; margin-top:16px; padding:12px 16px; border-radius:10px; background:var(--red-lt); color:var(--red); font-size:13px; font-weight:600; }
+.error.visible { display:block; }
+.foot { text-align:center; font-size:11px; color:var(--muted); margin-top:28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img src="https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-white.webp" alt="Adviser CRM">
+    <h1>Create an invite link</h1>
+    <p>Generates a private, single-use link for a 60-minute “Meeting with Sean Davis”. The link stops working after one booking, or when it expires unused.</p>
+  </div>
+
+  <div class="card">
+    <form id="form" autocomplete="off">
+      <div class="field">
+        <label for="passphrase">Passphrase</label>
+        <input id="passphrase" type="password" placeholder="••••••••" required>
+      </div>
+      <div class="field">
+        <label for="client">Client name <span style="font-weight:400;text-transform:none;color:var(--muted)">(optional)</span></label>
+        <input id="client" type="text" placeholder="e.g. Ian Coates">
+        <div class="hint">Shown to the client in the welcome message, and kept against the link for your records.</div>
+      </div>
+      <div class="field">
+        <label for="days">Link valid for</label>
+        <select id="days">
+          <option value="7">7 days</option>
+          <option value="14" selected>14 days</option>
+          <option value="30">30 days</option>
+          <option value="60">60 days</option>
+        </select>
+      </div>
+      <button class="btn" id="btn" type="submit">Create link</button>
+    </form>
+
+    <div class="error" id="error"></div>
+
+    <div class="result" id="result">
+      <h3>✓ Invite link ready</h3>
+      <div class="link-row">
+        <input id="link" type="text" readonly onclick="this.select()">
+        <button class="btn-copy" type="button" id="copy">Copy</button>
+      </div>
+      <div class="meta" id="meta"></div>
+    </div>
+  </div>
+
+  <div class="foot">© 2026 Adviser CRM · Internal use only</div>
+</div>
+
+<script>
+var INVITE_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/invite';
+
+document.getElementById('form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var btn   = document.getElementById('btn');
+  var err   = document.getElementById('error');
+  var res   = document.getElementById('result');
+  err.className = 'error'; res.className = 'result';
+  btn.disabled = true; btn.textContent = 'Creating…';
+
+  fetch(INVITE_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      passphrase: document.getElementById('passphrase').value,
+      clientName: document.getElementById('client').value.trim(),
+      days:       document.getElementById('days').value,
+    }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (!data.success) throw new Error(data.error || 'Could not create link');
+    document.getElementById('link').value = data.link;
+    var exp = new Date(data.expiresAt).toLocaleDateString('en-NZ', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    document.getElementById('meta').textContent =
+      (data.clientName ? 'For ' + data.clientName + ' · ' : '') + 'Expires ' + exp + ' · Single use';
+    res.className = 'result visible';
+    document.getElementById('client').value = '';
+  })
+  .catch(function(e) {
+    err.textContent = e.message;
+    err.className = 'error visible';
+  })
+  .finally(function() {
+    btn.disabled = false; btn.textContent = 'Create link';
+  });
+});
+
+document.getElementById('copy').addEventListener('click', function() {
+  var input = document.getElementById('link');
+  var self  = this;
+  navigator.clipboard.writeText(input.value).then(function() {
+    self.textContent = 'Copied!';
+    setTimeout(function() { self.textContent = 'Copy'; }, 1800);
+  }).catch(function() { input.select(); document.execCommand('copy'); });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Adviser CRM — "Send Founder Invite" button function (Deluge)
+//
+// Creates a single-use invite link for a 60-min "Meeting with Sean Davis",
+// emails it to the client from the user who clicked the button, and logs it
+// as a record in the Founder Invites module (related list on the Lead/Contact).
+// The booking site flips that record to "Used" when the client books.
+//
+// SETUP (once):
+//   1. Setup → Developer Space → Functions → New Function
+//        Name: sendFounderInvite   Category: Button
+//        Arguments:  recordId  (Int)     moduleName (String)
+//        Paste the body below.
+//   2. Setup → Developer Space → CRM Variables → New Variable
+//        Name: Founder_Invite_Passphrase   Type: Text
+//        Value = same as INVITE_PASSPHRASE in Netlify
+//   3. Setup → Customization → Modules → Leads → Buttons → Create New Button
+//        Name: Send Founder Invite   Placement: View page (Details)
+//        Action: Writing Function → sendFounderInvite
+//        Map arguments:  recordId  = Lead Id        moduleName = "Leads"   (custom value)
+//      Repeat for Contacts:  recordId = Contact Id  moduleName = "Contacts"
+//   Module used (already created): Founder_Invites with fields Name, Lead, Contact,
+//   Client_Email, Invite_Link, Sent_On, Expires_On, Status, Booking_Ref, Invite_ID
+// ─────────────────────────────────────────────────────────────────────────────
+
+string button.sendFounderInvite(int recordId, string moduleName)
+{
+	inviteEndpoint = "https://adviser-crm-calendar.netlify.app/.netlify/functions/invite";
+	passphrase = zoho.crm.getOrgVariable("Founder_Invite_Passphrase");
+	if(passphrase == null || passphrase == "")
+	{
+		return "The CRM variable Founder_Invite_Passphrase is not set. Please add it under Setup → Developer Space → CRM Variables.";
+	}
+	// ── Read the record ───────────────────────────────────────────
+	rec = zoho.crm.getRecordById(moduleName,recordId);
+	firstName = ifnull(rec.get("First_Name"),"");
+	lastName = ifnull(rec.get("Last_Name"),"");
+	fullName = (firstName + " " + lastName).trim();
+	email = ifnull(rec.get("Email"),"");
+	if(email == "")
+	{
+		return "This record has no email address. Please add one and try again.";
+	}
+	// ── Ask the booking site for a fresh single-use link ──────────
+	payload = Map();
+	payload.put("passphrase",passphrase);
+	payload.put("clientName",fullName);
+	payload.put("clientEmail",email);
+	payload.put("days",14);
+	payload.put("source","zoho");
+	headers = Map();
+	headers.put("Content-Type","application/json");
+	resp = invokeurl
+	[
+		url :inviteEndpoint
+		type :POST
+		parameters:payload.toString()
+		headers:headers
+	];
+	if(resp.get("success") != true)
+	{
+		return "Could not create the invite link: " + ifnull(resp.get("error"),"unknown error");
+	}
+	link = resp.get("link");
+	expiresIso = resp.get("expiresAt");
+	// "2026-11-21T07:00:00.000Z" → date
+	expiresDate = expiresIso.subString(0,10).toDate("yyyy-MM-dd");
+	expiresLabel = expiresDate.toString("EEEE d MMMM yyyy");
+	// token is  <id>.<expiry>.<signature>  — keep the id so the booking site can mark this record Used
+	inviteId = link.getSuffix("invite=").getPrefix(".");
+	// ── Email the client ──────────────────────────────────────────
+	greeting = if(firstName != "","Hi " + firstName + ",","Hi there,");
+	html = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a2b3c;'>" 
+		+ "<div style='background:#07385D;padding:30px 34px;border-radius:16px 16px 0 0;'>" 
+		+ "<img src='https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-white.webp' alt='Adviser CRM' style='height:34px;display:block;'>" 
+		+ "</div>" 
+		+ "<div style='background:#ffffff;border:1px solid #e8edf2;border-top:none;padding:30px 34px;border-radius:0 0 16px 16px;'>" 
+		+ "<p style='font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#0089b8;font-weight:700;margin:0 0 8px;'>A personal invitation</p>" 
+		+ "<h2 style='font-size:22px;font-weight:700;color:#07385D;margin:0 0 16px;letter-spacing:-0.3px;'>" + if(firstName != "",firstName + ", let's find a time to talk","Let's find a time to talk") + "</h2>" 
+		+ "<p style='font-size:15px;line-height:1.65;margin:0 0 14px;'>" + greeting + "</p>" 
+		+ "<p style='font-size:15px;line-height:1.65;margin:0 0 14px;'>A one on one meeting with Sean Davis from Adviser CRM. A 60 minute meeting over Zoom and you choose the date and time that suits you.</p>" 
+		+ "<p style='font-size:15px;line-height:1.65;margin:0 0 14px;'>You may only use this link once.</p>" 
+		+ "<p style='text-align:center;margin:26px 0;'>" 
+		+ "<a href='" + link + "' style='display:inline-block;background:#00ABE6;color:#ffffff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;'>Choose a meeting time</a>" 
+		+ "</p>" 
+		+ "<p style='font-size:13px;color:#5a7080;line-height:1.6;margin:0;'>This link expires on " + expiresLabel + ". If you need to change the time after booking, you can reschedule from your confirmation email.</p>" 
+		+ "<div style='border-top:1px solid #e8edf2;margin-top:24px;padding-top:18px;'>" 
+		+ "<p style='font-size:15px;margin:0;'><strong>Sean Davis</strong><br><span style='color:#5a7080;font-size:13px;'>Founder, Adviser CRM<br>seand@advisercrm.co.nz &middot; advisercrm.co.nz</span></p>" 
+		+ "</div>" 
+		+ "</div>" 
+		+ "<p style='text-align:center;font-size:11px;color:#98aab8;margin:16px 0 0;'>&copy; 2026 Adviser CRM &middot; All Rights Reserved</p>" 
+		+ "</div>";
+	sendmail
+	[
+		from :zoho.loginuserid
+		to :email
+		subject :"An invitation to meet with Sean Davis — Adviser CRM"
+		message :html
+	]
+	// ── Log it in the Founder Invites module ──────────────────────
+	inv = Map();
+	inv.put("Name","Invite — " + fullName + " — " + zoho.currentdate.toString("dd/MM/yyyy"));
+	if(moduleName == "Leads")
+	{
+		inv.put("Lead",recordId);
+	}
+	else
+	{
+		inv.put("Contact",recordId);
+	}
+	inv.put("Client_Email",email);
+	inv.put("Invite_Link",link);
+	inv.put("Invite_ID",inviteId);
+	inv.put("Sent_On",zoho.currenttime.toString("yyyy-MM-dd'T'HH:mm:ssXXX"));
+	inv.put("Expires_On",expiresDate);
+	inv.put("Status","Sent");
+	invResp = zoho.crm.createRecord("Founder_Invites",inv);
+	return "Invite sent to " + fullName + " (" + email + "). The link expires on " + expiresLabel + ".";
+}

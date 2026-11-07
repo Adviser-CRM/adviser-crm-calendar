@@ -13,6 +13,8 @@
 //
 // Dependencies: none (uses built-in fetch — Node 18+)
 
+const { verifyInvite, consumeInvite } = require('../lib/invites');
+
 const ALLOWED_ORIGINS = [
   'https://adviser-crm.github.io',
   'https://calendar.advisercrm.co.nz',
@@ -29,6 +31,7 @@ const MEETING_TYPES = {
   billing:    { name: 'Account & Billing Review',    duration: 30 },
   change:     { name: 'I Want to Change Something',  duration: 30 },
   new:        { name: 'I Want to Add Something New', duration: 30 },
+  founder:    { name: 'Meeting with Sean Davis',     duration: 60, inviteOnly: true }, // hidden — needs an invite link
 };
 
 const ADVISERS = {
@@ -64,7 +67,7 @@ exports.handler = async function(event, context) {
   try {
     // ── Parse + validate payload ────────────────────────────────
     const payload = JSON.parse(event.body || '{}');
-    const { meetingType, adviserId, event: evt, client, originalToken } = payload;
+    const { meetingType, adviserId, event: evt, client, originalToken, invite } = payload;
 
     // Validate required fields
     const errors = [];
@@ -78,6 +81,18 @@ exports.handler = async function(event, context) {
 
     if (errors.length) {
       return { statusCode: 200, headers, body: JSON.stringify({ success: false, error: errors.join(', ') }) };
+    }
+
+    // ── Invite-only meeting types need a valid, unused invite link ──
+    // (a reschedule of an existing invite booking carries originalToken instead, and is allowed through)
+    let inviteId = null;
+    if (MEETING_TYPES[meetingType].inviteOnly && !originalToken) {
+      const check = await verifyInvite(invite);
+      if (!check.ok) {
+        console.log('[ACRM] Invite-only booking refused:', check.reason);
+        return { statusCode: 200, headers, body: JSON.stringify({ success: false, error: check.message }) };
+      }
+      inviteId = check.id;
     }
 
     // Validate start time is in the future
@@ -160,6 +175,7 @@ exports.handler = async function(event, context) {
         'onboarding': 'New User Onboarding',
         'change':     'Change Request',
         'new':        'Customisation',
+        'founder':    'Adviser CRM Demo',
       };
 
       // Build event data with CRM link
@@ -302,6 +318,22 @@ exports.handler = async function(event, context) {
         }
       } catch(rescheduleErr) {
         console.log('[ACRM] Error cancelling original:', rescheduleErr.message);
+      }
+    }
+
+    // ── Mark the invite link as used ───────────────────────────
+    if (inviteId) {
+      try {
+        await consumeInvite(inviteId, ref);
+        console.log('[ACRM] Invite consumed:', inviteId, 'by booking', ref);
+      } catch(invErr) {
+        console.log('[ACRM] Could not mark invite used:', invErr.message);
+      }
+      // If the invite was sent from Zoho CRM, flip its Founder Invites record to "Used"
+      try {
+        await markZohoInviteUsed(await getZohoToken(), inviteId, ref);
+      } catch(zErr) {
+        console.log('[ACRM] Could not update Founder Invite in Zoho:', zErr.message);
       }
     }
 
@@ -469,6 +501,23 @@ async function createEventNote(token, eventId, clientName, notes, ref) {
   } else {
     console.log('[ACRM] Note creation failed:', JSON.stringify(data));
   }
+}
+
+// ── Founder Invites module: mark the CRM record Used ─────────────
+async function markZohoInviteUsed(token, inviteId, bookingRef) {
+  const criteria = encodeURIComponent('(Invite_ID:equals:' + inviteId + ')');
+  const res = await fetch('https://www.zohoapis.com/crm/v3/Founder_Invites/search?criteria=' + criteria + '&fields=id,Status',
+    { headers: { Authorization: 'Zoho-oauthtoken ' + token } });
+  if (res.status === 204) { console.log('[ACRM] No Founder Invite record for', inviteId, '(sent from invite.html?)'); return; }
+  const data = await res.json();
+  const rec  = data.data && data.data[0];
+  if (!rec) return;
+  await fetch('https://www.zohoapis.com/crm/v3/Founder_Invites', {
+    method:  'PUT',
+    headers: { Authorization: 'Zoho-oauthtoken ' + token, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ data: [{ id: rec.id, Status: 'Used', Booking_Ref: bookingRef }] }),
+  });
+  console.log('[ACRM] Founder Invite marked Used:', rec.id);
 }
 
 // Map adviser key to Zoho user ID

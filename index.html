@@ -63,6 +63,11 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
   line-height: 1.25; margin-bottom: 10px; letter-spacing: -0.5px;
 }
 .left-sub { font-size: 14px; color: rgba(255,255,255,0.55); line-height: 1.6; margin-bottom: 48px; }
+.left-eyebrow { display: none; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--blue); font-weight: 700; margin-bottom: 10px; }
+.left-host { display: none; font-size: 13px; color: var(--blue); margin: -30px 0 48px; }
+.left-host b { color: #fff; }
+body.invite-mode .left-eyebrow, body.invite-mode .left-host { display: block; }
+body.invite-mode .steps { display: none; }
 
 /* Progress steps */
 .steps { display: flex; flex-direction: column; gap: 0; }
@@ -580,6 +585,8 @@ textarea.form-input { resize: vertical; min-height: 90px; }
       align-items: center; gap: 10px;
     }
     .reschedule-banner.visible { display: flex; }
+    .reschedule-banner.invite { background: linear-gradient(135deg, var(--navy) 0%, #0a4f82 100%); }
+    .reschedule-banner.invite-error { background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); }
 </style>
 </head>
 <body>
@@ -599,8 +606,10 @@ textarea.form-input { resize: vertical; min-height: 90px; }
       <div class="left-logo-fallback" style="display:none;">Adviser CRM</div>
     </div>
 
-    <div class="left-heading">Book a meeting<br>with our team</div>
-    <div class="left-sub">Choose a meeting type, pick a time that works for you, and we'll take care of the rest.</div>
+    <div class="left-eyebrow">Personal invitation</div>
+    <div class="left-heading" id="left-heading">Book a meeting<br>with our team</div>
+    <div class="left-sub" id="left-sub">Choose a meeting type, pick a time that works for you, and we'll take care of the rest.</div>
+    <div class="left-host"><b>Sean Davis</b> · Founder, Adviser CRM</div>
 
     <div class="steps" id="step-indicators">
       <div class="step-item active" id="ind-1">
@@ -643,6 +652,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
     <div class="reschedule-banner" id="reschedule-banner">
       🔁 Rescheduling — pick a new date and time. Your original booking will be cancelled once the new one is confirmed.
     </div>
+    <div class="reschedule-banner invite" id="invite-banner"></div>
 
     <!-- Step 1: Meeting type -->
     <div class="step-panel active" id="panel-1">
@@ -681,7 +691,7 @@ textarea.form-input { resize: vertical; min-height: 90px; }
           </span>
         </div>
         <div class="btn-row" style="margin-top:0;">
-          <button class="btn-ghost" onclick="goToStep(1)">← Back</button>
+          <button class="btn-ghost" id="btn-back-2" onclick="goToStep(1)">← Back</button>
           <button class="btn-primary" id="btn-next-2" onclick="goToStep(3)" disabled>
             Continue <span>→</span>
           </button>
@@ -941,6 +951,18 @@ var MEETING_TYPES = [
     adviser:  'adviser_a', // Sean Davis
     zohoType: 'New Feature',
   },
+  {
+    id:       'founder',
+    name:     'Meeting with Sean Davis',
+    desc:     '60 min',
+    sub:      'A one-to-one meeting with Sean Davis, Founder of Adviser CRM.',
+    icon:     '🤝',
+    duration: 60,
+    adviser:  'adviser_a', // Sean Davis
+    zohoType: 'Adviser CRM Demo',
+    hidden:   true,        // never shown in the public list — reached only via an invite link
+    adviserLabel: 'Sean Davis — Founder, Adviser CRM',
+  },
 ];
 
 // ── State ─────────────────────────────────────────────────────────
@@ -958,11 +980,14 @@ var state = {
   monthlyData:  {}, // key: "adviser_a-2026-9" → busyByDay map
   monthlyLoading: false,
   originalToken: null, // set when arriving from manage.html to reschedule
+  invite:        null, // invite token when arriving via an invite link
+  inviteMode:    false,
 };
 
 // ── API Endpoints ─────────────────────────────────────────────────
 var BOOKING_ENDPOINT      = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/book';
 var AVAILABILITY_ENDPOINT = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/availability';
+var INVITE_ENDPOINT       = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/invite';
 var MONTHLY_ENDPOINT      = 'https://adviser-crm-calendar.netlify.app/.netlify/functions/monthly';
 
 // ── Init ──────────────────────────────────────────────────────────
@@ -987,6 +1012,53 @@ function init() {
 
   renderMeetingTypes();
   renderCalendar();
+
+  // Rescheduling an invite-only meeting: go straight to its calendar (the type isn't in the public list)
+  var topic = params.get('topic') || '';
+  if (state.originalToken && /^Meeting with Sean Davis/i.test(topic)) {
+    enterInviteMode();
+    selectMeeting('founder');
+    goToStep(2);
+  }
+
+  // Invite link: validate it, then open the hidden meeting type directly
+  var inviteToken = params.get('invite');
+  if (inviteToken) handleInvite(inviteToken);
+}
+
+function enterInviteMode() {
+  state.inviteMode = true;
+  document.body.classList.add('invite-mode');
+  document.getElementById('left-heading').innerHTML = "You're invited to meet<br>Sean Davis";
+  document.getElementById('left-sub').innerHTML    = 'A one on one meeting with Sean Davis from Adviser CRM. A 60 minute meeting over Zoom and you choose the date and time that suits you.<br><br>You may only use this link once.';
+}
+
+function handleInvite(token) {
+  var banner = document.getElementById('invite-banner');
+  if (!INVITE_ENDPOINT) return;
+  banner.className = 'reschedule-banner invite visible';
+  banner.textContent = 'Checking your invitation…';
+
+  fetch(INVITE_ENDPOINT + '?token=' + encodeURIComponent(token))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.valid) {
+        banner.className = 'reschedule-banner invite-error visible';
+        banner.textContent = '⚠️ ' + (data.message || 'This invitation link is not valid.');
+        return;
+      }
+      state.invite     = token;
+      enterInviteMode();
+      banner.className = 'reschedule-banner invite visible';
+      banner.textContent = '🤝 ' + (data.clientName ? data.clientName + ', you' : 'You') +
+        "'ve been invited to book a meeting with Sean Davis, Founder of Adviser CRM. Pick a time that suits you.";
+      selectMeeting('founder');
+      goToStep(2);
+    })
+    .catch(function() {
+      banner.className = 'reschedule-banner invite-error visible';
+      banner.textContent = '⚠️ We could not check your invitation right now. Please try again shortly.';
+    });
 }
 
 // Expose critical functions globally so onclick attributes can reach them
@@ -1074,7 +1146,7 @@ function updateStep3Summary() {
   var sumDate    = document.getElementById('sum-date');
   var sumTime    = document.getElementById('sum-time');
   if (sumMeeting) sumMeeting.textContent = mt  ? mt.name  : '—';
-  if (sumAdviser) sumAdviser.textContent = 'Adviser CRM Team';
+  if (sumAdviser) sumAdviser.textContent = (mt && mt.adviserLabel) || 'Adviser CRM Team';
   if (sumDate)    sumDate.textContent    = d   ? d.toLocaleDateString('en-NZ', { day:'numeric', month:'short', year:'numeric' }) : '—';
   if (sumTime)    sumTime.textContent    = state.selectedSlotLabel || '—';
 }
@@ -1097,6 +1169,10 @@ function goToStep(n) {
   }
 
   state.step = n;
+
+  // In invite mode step 1 is hidden, so there is nothing to go back to
+  var back2 = document.getElementById('btn-back-2');
+  if (back2) back2.style.display = state.inviteMode ? 'none' : '';
 
   // Show meeting type reminder on step 2
   var reminder = document.getElementById('step2-reminder');
@@ -1131,7 +1207,7 @@ function goToStep(n) {
 // ── Step 1: Meeting types ─────────────────────────────────────────
 function renderMeetingTypes() {
   var grid = document.getElementById('meeting-grid');
-  grid.innerHTML = MEETING_TYPES.map(function(m) {
+  grid.innerHTML = MEETING_TYPES.filter(function(m) { return !m.hidden; }).map(function(m) {
     return '<div class="meeting-card" data-id="' + m.id + '" onclick="selectMeeting(this.dataset.id)">' +
       '<div class="meeting-icon">' + m.icon + '</div>' +
       '<div class="meeting-name">' + m.name + '</div>' +
@@ -1218,7 +1294,7 @@ function submitBooking() {
 
     // Populate confirmation screen
     document.getElementById('conf-meeting').textContent  = mt.name;
-    document.getElementById('conf-adviser').textContent  = 'Adviser CRM Team';
+    document.getElementById('conf-adviser').textContent  = mt.adviserLabel || 'Adviser CRM Team';
     document.getElementById('conf-datetime').textContent = d.toLocaleDateString('en-NZ',{day:'numeric',month:'long',year:'numeric'}) + ' at ' + slot;
     document.getElementById('conf-duration').textContent = mt.duration + ' minutes';
     document.getElementById('conf-name').textContent     = fname + ' ' + lname;
@@ -1255,6 +1331,7 @@ function submitBooking() {
         meetingType: mt.id,
         adviserId:   state.meetingType ? state.meetingType.adviser : 'adviser_a',
         originalToken: state.originalToken || undefined,
+        invite:        state.invite || undefined,
       }),
     })
     .then(function(r) { return r.json(); })
@@ -1297,6 +1374,13 @@ function resetBooking() {
   document.getElementById('f-phone').value     = '';
   document.getElementById('f-notes').value     = '';
   state.originalToken = null;
+  state.invite        = null;
+  state.inviteMode    = false;
+  document.body.classList.remove('invite-mode');
+  document.getElementById('left-heading').innerHTML = 'Book a meeting<br>with our team';
+  document.getElementById('left-sub').textContent  = "Choose a meeting type, pick a time that works for you, and we'll take care of the rest.";
+  var ib = document.getElementById('invite-banner'); if (ib) ib.className = 'reschedule-banner invite';
+  var b2 = document.getElementById('btn-back-2');    if (b2) b2.style.display = '';
   document.querySelectorAll('.has-error').forEach(function(e) { e.classList.remove('has-error'); });
   goToStep(1);
   state.calYear  = new Date().getFullYear();

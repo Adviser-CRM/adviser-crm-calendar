@@ -1,0 +1,8 @@
+{
+  "name": "adviser-crm-calendar",
+  "private": true,
+  "description": "Adviser CRM online booking page and Netlify functions",
+  "dependencies": {
+    "@netlify/blobs": "^8.2.0"
+  }
+}
