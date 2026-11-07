@@ -13,7 +13,7 @@
 //
 // Dependencies: none (uses built-in fetch — Node 18+)
 
-const { verifyInvite, consumeInvite } = require('../lib/invites');
+const { connectBlobs, verifyInvite, consumeInvite } = require('../lib/invites');
 
 const ALLOWED_ORIGINS = [
   'https://adviser-crm.github.io',
@@ -63,6 +63,8 @@ exports.handler = async function(event, context) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 200, headers, body: JSON.stringify({ success: false, error: 'Method not allowed' }) };
   }
+
+  connectBlobs(event);
 
   try {
     // ── Parse + validate payload ────────────────────────────────

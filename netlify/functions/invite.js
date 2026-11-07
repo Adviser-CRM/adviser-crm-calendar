@@ -7,7 +7,7 @@
 //
 // Environment variables: INVITE_SECRET, INVITE_PASSPHRASE  (see netlify/lib/invites.js)
 
-const { createInvite, verifyInvite, DEFAULT_DAYS } = require('../lib/invites');
+const { connectBlobs, createInvite, verifyInvite, DEFAULT_DAYS } = require('../lib/invites');
 
 const ALLOWED_ORIGINS = [
   'https://adviser-crm.github.io',
@@ -32,6 +32,8 @@ exports.handler = async function(event) {
   const headers = corsHeaders(origin);
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
+
+  connectBlobs(event);
 
   try {
     // ── Validate an invite ─────────────────────────────────────

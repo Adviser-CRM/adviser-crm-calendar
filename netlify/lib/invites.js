@@ -14,7 +14,7 @@
 //   INVITE_PASSPHRASE   what Sean types into invite.html to create a link
 
 const crypto = require('crypto');
-const { getStore } = require('@netlify/blobs');
+const { getStore, connectLambda } = require('@netlify/blobs');
 
 const STORE_NAME   = 'invites';
 const DEFAULT_DAYS = 14;
@@ -27,6 +27,12 @@ function secret() {
 
 function sign(id, exp) {
   return crypto.createHmac('sha256', secret()).update(id + '.' + exp).digest('base64url').slice(0, 22);
+}
+
+// Legacy (exports.handler) functions must hand the request event to Blobs before use.
+// Call this once at the top of a handler that touches invites.
+function connectBlobs(event) {
+  try { connectLambda(event); } catch (e) { console.log('[ACRM] connectLambda:', e.message); }
 }
 
 function store() {
@@ -92,4 +98,4 @@ function bad(reason, message) {
   return { ok: false, reason, message };
 }
 
-module.exports = { createInvite, verifyInvite, consumeInvite, DEFAULT_DAYS };
+module.exports = { connectBlobs, createInvite, verifyInvite, consumeInvite, DEFAULT_DAYS };
