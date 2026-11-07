@@ -10,8 +10,10 @@
 // been used, which is what makes a link single-use.
 //
 // Environment variables (Netlify dashboard):
-//   INVITE_SECRET       long random string used to sign tokens
-//   INVITE_PASSPHRASE   what Sean types into invite.html to create a link
+//   INVITE_SECRET         long random string used to sign tokens
+//   INVITE_PASSPHRASE     what Sean types into invite.html to create a link
+//   NETLIFY_BLOBS_TOKEN   Netlify personal access token — lets reads be strongly consistent
+//                         (without it, a just-used link can still open for up to a minute)
 
 const crypto = require('crypto');
 const { getStore, connectLambda } = require('@netlify/blobs');
@@ -35,9 +37,18 @@ function connectBlobs(event) {
   try { connectLambda(event); } catch (e) { console.log('[ACRM] connectLambda:', e.message); }
 }
 
+const SITE_ID = process.env.SITE_ID || 'c0dc6dcb-bf8e-43e0-9b69-ae09b181e9a4'; // adviser-crm-calendar
+
 function store() {
-  // strong consistency: a link marked "used" must be seen as used immediately, from any browser or region
-  return getStore({ name: STORE_NAME, consistency: 'strong' });
+  // A link marked "used" must be seen as used immediately, from any browser or region.
+  // Netlify's edge-cached Blobs reads are only eventually consistent (up to ~60s stale), and
+  // legacy functions aren't given the uncached edge URL — so when a token is available we go
+  // through the Netlify API instead, which reads from the origin.
+  if (process.env.NETLIFY_BLOBS_TOKEN) {
+    return getStore({ name: STORE_NAME, siteID: SITE_ID, token: process.env.NETLIFY_BLOBS_TOKEN, consistency: 'strong' });
+  }
+  console.log('[ACRM] NETLIFY_BLOBS_TOKEN not set — falling back to eventually-consistent Blobs reads');
+  return getStore(STORE_NAME);
 }
 
 // Create a new invite and return { token, exp, record }
