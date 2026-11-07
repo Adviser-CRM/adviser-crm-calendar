@@ -10,7 +10,7 @@
 //   1. Setup → Developer Space → Functions → New Function
 //        Name: sendFounderInvite   Category: Button
 //        Arguments:  recordId  (Int)     moduleName (String)
-//        Paste the body below.
+//        Paste ONLY the body (inside the braces) — the editor writes the signature line itself.
 //   2. Setup → Developer Space → CRM Variables → New Variable
 //        Name: Founder_Invite_Passphrase   Type: Text
 //        Value = same as INVITE_PASSPHRASE in Netlify
@@ -69,14 +69,20 @@ string button.sendFounderInvite(int recordId, string moduleName)
 	// token is  <id>.<expiry>.<signature>  — keep the id so the booking site can mark this record Used
 	inviteId = link.getSuffix("invite=").getPrefix(".");
 	// ── Email the client ──────────────────────────────────────────
-	greeting = if(firstName != "","Hi " + firstName + ",","Hi there,");
+	greeting = "Hi there,";
+	headline = "Let's find a time to talk";
+	if(firstName != "")
+	{
+		greeting = "Hi " + firstName + ",";
+		headline = firstName + ", let's find a time to talk";
+	}
 	html = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a2b3c;'>" 
 		+ "<div style='background:#07385D;padding:30px 34px;border-radius:16px 16px 0 0;'>" 
-		+ "<img src='https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-white.webp' alt='Adviser CRM' style='height:34px;display:block;'>" 
+		+ "<img src='https://adviser-crm.github.io/adviser-crm-calendar/acrm-logo-white-email.png' alt='Adviser CRM' width='222' height='34' style='height:34px;width:auto;display:block;border:0;'>" 
 		+ "</div>" 
 		+ "<div style='background:#ffffff;border:1px solid #e8edf2;border-top:none;padding:30px 34px;border-radius:0 0 16px 16px;'>" 
 		+ "<p style='font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#0089b8;font-weight:700;margin:0 0 8px;'>A personal invitation</p>" 
-		+ "<h2 style='font-size:22px;font-weight:700;color:#07385D;margin:0 0 16px;letter-spacing:-0.3px;'>" + if(firstName != "",firstName + ", let's find a time to talk","Let's find a time to talk") + "</h2>" 
+		+ "<h2 style='font-size:22px;font-weight:700;color:#07385D;margin:0 0 16px;letter-spacing:-0.3px;'>" + headline + "</h2>" 
 		+ "<p style='font-size:15px;line-height:1.65;margin:0 0 14px;'>" + greeting + "</p>" 
 		+ "<p style='font-size:15px;line-height:1.65;margin:0 0 14px;'>A one on one meeting with Sean Davis from Adviser CRM. A 60 minute meeting over Zoom and you choose the date and time that suits you.</p>" 
 		+ "<p style='font-size:15px;line-height:1.65;margin:0 0 14px;'>You may only use this link once.</p>" 
@@ -112,7 +118,7 @@ string button.sendFounderInvite(int recordId, string moduleName)
 	inv.put("Invite_Link",link);
 	inv.put("Invite_ID",inviteId);
 	inv.put("Sent_On",zoho.currenttime.toString("yyyy-MM-dd'T'HH:mm:ssXXX"));
-	inv.put("Expires_On",expiresDate);
+	inv.put("Expires_On",expiresDate.toString("yyyy-MM-dd"));
 	inv.put("Status","Sent");
 	invResp = zoho.crm.createRecord("Founder_Invites",inv);
 	return "Invite sent to " + fullName + " (" + email + "). The link expires on " + expiresLabel + ".";
