@@ -36,7 +36,8 @@ function connectBlobs(event) {
 }
 
 function store() {
-  return getStore(STORE_NAME);
+  // strong consistency: a link marked "used" must be seen as used immediately, from any browser or region
+  return getStore({ name: STORE_NAME, consistency: 'strong' });
 }
 
 // Create a new invite and return { token, exp, record }
