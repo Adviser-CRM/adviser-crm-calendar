@@ -1,0 +1,69 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Adviser CRM — link a meeting to its Contact (or Lead) from the guest list
+//
+// Meetings that arrive from Google Calendar carry their guests as participants
+// but are not linked to a record. This sets the meeting's Contact (or Lead)
+// from the first external guest that Zoho has matched to a CRM record.
+// It never overwrites a link that is already there, and it ignores
+// @advisercrm.co.nz guests (staff also exist as Contacts).
+//
+// SETUP (once):
+//   1. Setup → Developer Space → Functions → New Function
+//        Name: linkZoomMeetingToContact   Category: Automation
+//        Argument:  meetingId (Int)
+//        Paste ONLY the body (inside the braces).
+//   2. Setup → Automation → Workflow Rules → Create Rule
+//        Module: Meetings      When: on a record action → Create or Edit
+//        Condition: all meetings
+//        Instant action → Function → linkZoomMeetingToContact
+//        Map argument:  meetingId = Meetings - Meeting Id
+// ─────────────────────────────────────────────────────────────────────────────
+
+void automation.linkZoomMeetingToContact(int meetingId)
+{
+	meeting = zoho.crm.getRecordById("Events",meetingId);
+	// Leave meetings alone if they are already linked (booking page, manual links)
+	if(meeting.get("Who_Id") != null || meeting.get("What_Id") != null)
+	{
+		return;
+	}
+	participants = ifnull(meeting.get("Participants"),List());
+	contactId = null;
+	leadId = null;
+	for each p in participants
+	{
+		pType = ifnull(p.get("type"),"");
+		pEmail = ifnull(p.get("Email"),"").toLowerCase();
+		pId = p.get("participant");
+		if(pId != null && !pEmail.endsWith("@advisercrm.co.nz"))
+		{
+			if(pType == "contact" && contactId == null)
+			{
+				contactId = pId;
+			}
+			else if(pType == "lead" && leadId == null)
+			{
+				leadId = pId;
+			}
+		}
+	}
+	upd = Map();
+	if(contactId != null)
+	{
+		upd.put("Who_Id",contactId);
+		zoho.crm.updateRecord("Events",meetingId,upd);
+		info "Linked meeting " + meetingId + " to contact " + contactId;
+	}
+	else if(leadId != null)
+	{
+		// Leads must go in What_Id with $se_module (Who_Id accepts Contacts only)
+		upd.put("What_Id",leadId);
+		upd.put("$se_module","Leads");
+		zoho.crm.updateRecord("Events",meetingId,upd);
+		info "Linked meeting " + meetingId + " to lead " + leadId;
+	}
+	else
+	{
+		info "No external contact or lead among the guests of meeting " + meetingId;
+	}
+}
